@@ -1,5 +1,5 @@
 # PortableMC Lightweight GUI
-
+<img width="441" height="453" alt="preview" src="https://github.com/user-attachments/assets/e7b9912f-44b9-4926-ac6a-838d033b6b3b" />
 A fast, lightweight, native Win32 graphical user interface written in pure C for **[PortableMC](https://github.com)**. Built with zero external runtime dependencies and an Apple-inspired aesthetic featuring vertical gradient backgrounds, rounded controls, custom modal dialogs, and instant Light/Dark theme switching.
 
 ---
