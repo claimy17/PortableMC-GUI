@@ -1,0 +1,20 @@
+# Compiled binaries and object files
+*.exe
+*.o
+*.res
+*.obj
+
+# Temporary build and batch files
+app.rc
+pmc_run.bat
+
+# Minecraft & PortableMC runtime files (never commit game assets or tokens)
+.minecraft/
+assets/
+libraries/
+versions/
+runtime/
+logs/
+mods/
+launcher_profiles.json
+portablemc_auth.json
