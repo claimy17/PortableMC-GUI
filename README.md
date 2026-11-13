@@ -1,4 +1,5 @@
-# PortableMC Lightweight GUI<img width="256" height="140" alt="icon" src="https://github.com/user-attachments/assets/e6a506c7-4968-4e9b-9f41-7611d8c896ae" />
+# PortableMC Lightweight GUI   <img width="64" height="35" alt="icon" src="https://github.com/user-attachments/assets/5e835cd6-a222-437b-b25e-24a15a216fbd" />
+
 <img width="441" height="453" alt="preview (2)" src="https://github.com/user-attachments/assets/a74a69bd-420b-46e2-9c45-60d397e7fe4d" /> <img width="441" height="453" alt="preview" src="https://github.com/user-attachments/assets/9cdfaddf-7127-40af-849a-f56b10c497a1" />
 
 
