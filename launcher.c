@@ -23,6 +23,8 @@
 #define ID_BTN_LAUNCH      110
 #define ID_EDIT_LOG        111
 #define ID_COMBO_THEME     112
+#define ID_BTN_IMPORT_SKIN 113
+#define ID_BTN_IMPORT_CAPE 114
 
 #define ID_MENU_BASE       2000
 
@@ -35,6 +37,9 @@
 
 HWND hBtnAuth, hEditUser, hBtnLogin, hBtnLoader, hBtnVersion, hBtnSnap, hBtnBeta, hEditDir, hEditLog, hBtnLaunch, hBtnTheme;
 HWND hTitle, lblLoader, lblVer, lblDir, btnMod, btnBrowse;
+HWND hTitle, lblLoader, lblVer, lblDir, btnMod, btnBrowse, btnSkin, btnCape;
+void ShowCustomAlert(HWND parent, const char* title, const char* message, const char* folderPath);
+void ImportSkinOrCape(HWND hwnd, BOOL isCape);
 HFONT hFontMain, hFontTitle, hFontLog, hFontBtn, hFontSmall;
 
 int isDarkTheme = 0; 
@@ -48,7 +53,7 @@ BOOL isRunningCmd = FALSE;
 BOOL isDownloading = FALSE;
 HANDLE hActiveProcess = NULL;
 
-char selectedVersion[64] = "26.4";
+char selectedVersion[64] = "26.3";
 
 HWND hHoveredBtn = NULL;
 WNDPROC origBtnProc = NULL;
@@ -307,6 +312,70 @@ void ImportModJar(HWND hwnd) {
     free(modFile);
 }
 
+void ImportSkinOrCape(HWND hwnd, BOOL isCape) {
+    // 1. Se è in modalità Microsoft, apre il profilo ufficiale sul browser
+    if (authMode == 1) {
+        ShellExecuteA(NULL, "open", "https://minecraft.net", NULL, NULL, SW_SHOWNORMAL);
+        return;
+    }
+
+    // 2. Se è in modalità Offline e il Mod Loader selezionato è "Vanilla" (loaderIdx == 0), avvisa subito
+    if (loaderIdx == 0) {
+        ShowCustomAlert(hwnd,
+            "Vanilla Not Supported",
+            "Offline skins and capes cannot be applied on Vanilla.\n\nPlease select Fabric, Forge, NeoForge, or Quilt and install the CustomSkinLoader mod.",
+            NULL);
+        return;
+    }
+
+    char baseDir[MAX_PATH] = { 0 };
+    GetWindowTextA(hEditDir, baseDir, MAX_PATH);
+    size_t dLen = strlen(baseDir);
+    while (dLen > 0 && (baseDir[dLen - 1] == '\\' || baseDir[dLen - 1] == '/')) {
+        baseDir[--dLen] = '\0';
+    }
+    if (dLen == 0) {
+        ShowCustomAlert(hwnd, "Missing Game Folder", "Please select a destination game folder first.", NULL);
+        return;
+    }
+
+    char username[128] = { 0 };
+    GetWindowTextA(hEditUser, username, sizeof(username));
+    if (strlen(username) == 0) {
+        strcpy(username, "Steve");
+    }
+
+    char pngFile[MAX_PATH] = { 0 };
+    OPENFILENAMEA ofn = { 0 };
+    ofn.lStructSize = sizeof(ofn);
+    ofn.hwndOwner = hwnd;
+    ofn.lpstrFilter = "PNG Texture (*.png)\0*.png\0All Files (*.*)\0*.*\0";
+    ofn.lpstrFile = pngFile;
+    ofn.nMaxFile = MAX_PATH;
+    ofn.lpstrTitle = isCape ? "Select Cape texture (.png)" : "Select Skin texture (.png)";
+    ofn.Flags = OFN_PATHMUSTEXIST | OFN_FILEMUSTEXIST | OFN_NOCHANGEDIR;
+
+    if (GetOpenFileNameA(&ofn)) {
+        char targetFolder[MAX_PATH];
+        snprintf(targetFolder, MAX_PATH, "%s\\CustomSkinLoader\\LocalSkin\\%s",
+                 baseDir, isCape ? "capes" : "skins");
+        CreateDirectories(targetFolder);
+
+        char destPath[MAX_PATH];
+        snprintf(destPath, MAX_PATH, "%s\\%s.png", targetFolder, username);
+
+        if (CopyFileA(pngFile, destPath, FALSE)) {
+            char msg[MAX_PATH + 256];
+            snprintf(msg, sizeof(msg),
+                "%s saved for '%s'!\nMake sure CustomSkinLoader is inside your mods folder.\n\nSaved to:\n%s",
+                isCape ? "Cape" : "Skin", username, targetFolder);
+            ShowCustomAlert(hwnd, isCape ? "Cape Imported" : "Skin Imported", msg, targetFolder);
+        } else {
+            ShowCustomAlert(hwnd, "Import Error", "Failed to copy the .png file into LocalSkin folder.", NULL);
+        }
+    }
+}
+
 void CleanAndSendLog(HWND hwnd, const char* raw) {
     size_t len = strlen(raw);
     char* clean = (char*)calloc(len * 2 + 1, 1);
@@ -503,11 +572,11 @@ void UpdateAuthUI() {
     SetWindowTextA(hBtnAuth, authMode == 1 ? "Microsoft" : "Username");
     if (authMode == 1) {
         ShowWindow(hBtnLogin, SW_SHOW);
-        MoveWindow(hEditUser, 175, 62, 150, 26, TRUE);
+        MoveWindow(hEditUser, 175, 62, 230, 26, TRUE);
         SendMessageW(hEditUser, EM_SETCUEBANNER, TRUE, (LPARAM)L"Optional Microsoft nickname...");
     } else {
         ShowWindow(hBtnLogin, SW_HIDE);
-        MoveWindow(hEditUser, 175, 62, 235, 26, TRUE);
+        MoveWindow(hEditUser, 175, 62, 315, 26, TRUE);
         SendMessageW(hEditUser, EM_SETCUEBANNER, TRUE, (LPARAM)L"Enter offline username...");
     }
     InvalidateRect(hBtnAuth, NULL, FALSE);
@@ -748,85 +817,94 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) 
                 WS_VISIBLE | WS_CHILD | SS_LEFT, 25, 18, 125, 28, hwnd, NULL, NULL, NULL);
             SendMessage(hTitle, WM_SETFONT, (WPARAM)hFontTitle, TRUE);
 
-            hBtnTheme = CreateWindowA("BUTTON", "Light Theme",
-                WS_VISIBLE | WS_CHILD | BS_OWNERDRAW, 285, 18, 125, 28, hwnd, (HMENU)ID_COMBO_THEME, NULL, NULL);
-            SendMessage(hBtnTheme, WM_SETFONT, (WPARAM)hFontMain, TRUE);
+          hBtnTheme = CreateWindowA("BUTTON", "Light Theme",
+              WS_VISIBLE | WS_CHILD | BS_OWNERDRAW, 365, 18, 125, 28, hwnd, (HMENU)ID_COMBO_THEME, NULL, NULL);
+          SendMessage(hBtnTheme, WM_SETFONT, (WPARAM)hFontMain, TRUE);
 
-            hBtnAuth = CreateWindowA("BUTTON", "Username",
-                WS_VISIBLE | WS_CHILD | BS_OWNERDRAW, 25, 62, 140, 26, hwnd, (HMENU)ID_COMBO_AUTH, NULL, NULL);
-            SendMessage(hBtnAuth, WM_SETFONT, (WPARAM)hFontMain, TRUE);
+          hBtnAuth = CreateWindowA("BUTTON", "Username",
+              WS_VISIBLE | WS_CHILD | BS_OWNERDRAW, 25, 62, 140, 26, hwnd, (HMENU)ID_COMBO_AUTH, NULL, NULL);
+          SendMessage(hBtnAuth, WM_SETFONT, (WPARAM)hFontMain, TRUE);
 
-            hEditUser = CreateWindowA("EDIT", "",
-                WS_VISIBLE | WS_CHILD | ES_AUTOHSCROLL, 175, 62, 235, 26, hwnd, (HMENU)ID_EDIT_USER, NULL, NULL);
-            SendMessage(hEditUser, WM_SETFONT, (WPARAM)hFontMain, TRUE);
-            SendMessageW(hEditUser, EM_SETCUEBANNER, TRUE, (LPARAM)L"Enter offline username...");
+          hEditUser = CreateWindowA("EDIT", "",
+              WS_VISIBLE | WS_CHILD | ES_AUTOHSCROLL, 175, 62, 315, 26, hwnd, (HMENU)ID_EDIT_USER, NULL, NULL);
+          SendMessage(hEditUser, WM_SETFONT, (WPARAM)hFontMain, TRUE);
+          SendMessageW(hEditUser, EM_SETCUEBANNER, TRUE, (LPARAM)L"Enter offline username...");
 
-            hBtnLogin = CreateWindowA("BUTTON", "Login",
-                WS_CHILD | BS_OWNERDRAW, 335, 62, 75, 26, hwnd, (HMENU)ID_BTN_LOGIN, NULL, NULL);
-            SendMessage(hBtnLogin, WM_SETFONT, (WPARAM)hFontBtn, TRUE);
+          hBtnLogin = CreateWindowA("BUTTON", "Login",
+              WS_CHILD | BS_OWNERDRAW, 415, 62, 75, 26, hwnd, (HMENU)ID_BTN_LOGIN, NULL, NULL);
+          SendMessage(hBtnLogin, WM_SETFONT, (WPARAM)hFontBtn, TRUE);
 
-            lblLoader = CreateWindowA("STATIC", "Mod Loader",
-                WS_VISIBLE | WS_CHILD, 25, 104, 140, 24, hwnd, NULL, NULL, NULL);
-            SendMessage(lblLoader, WM_SETFONT, (WPARAM)hFontMain, TRUE);
+          lblLoader = CreateWindowA("STATIC", "Mod Loader",
+              WS_VISIBLE | WS_CHILD, 25, 104, 140, 24, hwnd, NULL, NULL, NULL);
+          SendMessage(lblLoader, WM_SETFONT, (WPARAM)hFontMain, TRUE);
 
-            hBtnLoader = CreateWindowA("BUTTON", "Vanilla",
-                WS_VISIBLE | WS_CHILD | BS_OWNERDRAW, 175, 102, 235, 26, hwnd, (HMENU)ID_COMBO_LOADER, NULL, NULL);
-            SendMessage(hBtnLoader, WM_SETFONT, (WPARAM)hFontMain, TRUE);
+          hBtnLoader = CreateWindowA("BUTTON", "Vanilla",
+              WS_VISIBLE | WS_CHILD | BS_OWNERDRAW, 175, 102, 315, 26, hwnd, (HMENU)ID_COMBO_LOADER, NULL, NULL);
+          SendMessage(hBtnLoader, WM_SETFONT, (WPARAM)hFontMain, TRUE);
 
-            lblVer = CreateWindowA("STATIC", "Version",
-                WS_VISIBLE | WS_CHILD, 25, 144, 140, 24, hwnd, NULL, NULL, NULL);
-            SendMessage(lblVer, WM_SETFONT, (WPARAM)hFontMain, TRUE);
+          lblVer = CreateWindowA("STATIC", "Version",
+              WS_VISIBLE | WS_CHILD, 25, 144, 140, 24, hwnd, NULL, NULL, NULL);
+          SendMessage(lblVer, WM_SETFONT, (WPARAM)hFontMain, TRUE);
 
-            hBtnVersion = CreateWindowA("BUTTON", selectedVersion,
-                WS_VISIBLE | WS_CHILD | BS_OWNERDRAW, 175, 142, 105, 26, hwnd, (HMENU)ID_COMBO_VERSION, NULL, NULL);
-            SendMessage(hBtnVersion, WM_SETFONT, (WPARAM)hFontMain, TRUE);
+          hBtnVersion = CreateWindowA("BUTTON", selectedVersion,
+              WS_VISIBLE | WS_CHILD | BS_OWNERDRAW, 175, 142, 165, 26, hwnd, (HMENU)ID_COMBO_VERSION, NULL, NULL);
+          SendMessage(hBtnVersion, WM_SETFONT, (WPARAM)hFontMain, TRUE);
 
-            hBtnSnap = CreateWindowA("BUTTON", "Snapshot",
-                WS_VISIBLE | WS_CHILD | BS_OWNERDRAW,
-                286, 142, 68, 26, hwnd, (HMENU)ID_BTN_TOGGLE_SNAP, NULL, NULL);
-            SendMessage(hBtnSnap, WM_SETFONT, (WPARAM)hFontSmall, TRUE);
+          hBtnSnap = CreateWindowA("BUTTON", "Snapshot",
+              WS_VISIBLE | WS_CHILD | BS_OWNERDRAW, 346, 142, 76, 26, hwnd, (HMENU)ID_BTN_TOGGLE_SNAP, NULL, NULL);
+          SendMessage(hBtnSnap, WM_SETFONT, (WPARAM)hFontSmall, TRUE);
 
-            hBtnBeta = CreateWindowA("BUTTON", "Beta",
-                WS_VISIBLE | WS_CHILD | BS_OWNERDRAW, 360, 142, 50, 26, hwnd, (HMENU)ID_BTN_TOGGLE_BETA, NULL, NULL);
-            SendMessage(hBtnBeta, WM_SETFONT, (WPARAM)hFontSmall, TRUE);
+          hBtnBeta = CreateWindowA("BUTTON", "Beta",
+              WS_VISIBLE | WS_CHILD | BS_OWNERDRAW, 428, 142, 62, 26, hwnd, (HMENU)ID_BTN_TOGGLE_BETA, NULL, NULL);
+          SendMessage(hBtnBeta, WM_SETFONT, (WPARAM)hFontSmall, TRUE);
 
-            lblDir = CreateWindowA("STATIC", "Game folder",
-                WS_VISIBLE | WS_CHILD, 25, 184, 140, 24, hwnd, NULL, NULL, NULL);
-            SendMessage(lblDir, WM_SETFONT, (WPARAM)hFontMain, TRUE);
+          lblDir = CreateWindowA("STATIC", "Game folder",
+              WS_VISIBLE | WS_CHILD, 25, 184, 140, 24, hwnd, NULL, NULL, NULL);
+          SendMessage(lblDir, WM_SETFONT, (WPARAM)hFontMain, TRUE);
 
-            char* defaultDir = (char*)calloc(MAX_PATH, 1);
-            if (FAILED(SHGetFolderPathA(NULL, CSIDL_APPDATA, NULL, 0, defaultDir))) {
-                GetCurrentDirectoryA(MAX_PATH, defaultDir);
-            }
-            strcat(defaultDir, "\\.minecraft");
+          char* defaultDir = (char*)calloc(MAX_PATH, 1);
+          if (FAILED(SHGetFolderPathA(NULL, CSIDL_APPDATA, NULL, 0, defaultDir))) {
+              GetCurrentDirectoryA(MAX_PATH, defaultDir);
+          }
+          strcat(defaultDir, "\\.minecraft");
 
-            hEditDir = CreateWindowA("EDIT", defaultDir,
-                WS_VISIBLE | WS_CHILD | ES_AUTOHSCROLL, 175, 182, 105, 26, hwnd, (HMENU)ID_EDIT_DIR, NULL, NULL);
-            SendMessage(hEditDir, WM_SETFONT, (WPARAM)hFontMain, TRUE);
-            free(defaultDir);
+          hEditDir = CreateWindowA("EDIT", defaultDir,
+              WS_VISIBLE | WS_CHILD | ES_AUTOHSCROLL, 175, 182, 92, 26, hwnd, (HMENU)ID_EDIT_DIR, NULL, NULL);
+          SendMessage(hEditDir, WM_SETFONT, (WPARAM)hFontMain, TRUE);
+          free(defaultDir);
 
-            btnBrowse = CreateWindowA("BUTTON", "Browse",
-                WS_VISIBLE | WS_CHILD | BS_OWNERDRAW, 286, 182, 58, 26, hwnd, (HMENU)ID_BTN_BROWSE_DIR, NULL, NULL);
-            SendMessage(btnBrowse, WM_SETFONT, (WPARAM)hFontSmall, TRUE);
+          btnBrowse = CreateWindowA("BUTTON", "Browse",
+              WS_VISIBLE | WS_CHILD | BS_OWNERDRAW, 272, 182, 52, 26, hwnd, (HMENU)ID_BTN_BROWSE_DIR, NULL, NULL);
+          SendMessage(btnBrowse, WM_SETFONT, (WPARAM)hFontSmall, TRUE);
 
-            btnMod = CreateWindowA("BUTTON", "+ Mod",
-                WS_VISIBLE | WS_CHILD | BS_OWNERDRAW, 350, 182, 60, 26, hwnd, (HMENU)ID_BTN_IMPORT_MOD, NULL, NULL);
-            SendMessage(btnMod, WM_SETFONT, (WPARAM)hFontSmall, TRUE);
+          btnMod = CreateWindowA("BUTTON", "+ Mod",
+              WS_VISIBLE | WS_CHILD | BS_OWNERDRAW, 329, 182, 50, 26, hwnd, (HMENU)ID_BTN_IMPORT_MOD, NULL, NULL);
+          SendMessage(btnMod, WM_SETFONT, (WPARAM)hFontSmall, TRUE);
 
-            hEditLog = CreateWindowA("EDIT", "Ready.\r\n",
-                WS_VISIBLE | WS_CHILD | WS_VSCROLL | ES_MULTILINE | ES_AUTOVSCROLL | ES_READONLY,
-                25, 224, 385, 115, hwnd, (HMENU)ID_EDIT_LOG, NULL, NULL);
-            SendMessage(hEditLog, WM_SETFONT, (WPARAM)hFontLog, TRUE);
+          btnSkin = CreateWindowA("BUTTON", "+ Skin",
+              WS_VISIBLE | WS_CHILD | BS_OWNERDRAW, 384, 182, 50, 26, hwnd, (HMENU)ID_BTN_IMPORT_SKIN, NULL, NULL);
+          SendMessage(btnSkin, WM_SETFONT, (WPARAM)hFontSmall, TRUE);
 
-            hBtnLaunch = CreateWindowA("BUTTON", "LAUNCH MINECRAFT",
-                WS_VISIBLE | WS_CHILD | BS_OWNERDRAW, 25, 352, 385, 44, hwnd, (HMENU)ID_BTN_LAUNCH, NULL, NULL);
-            SendMessage(hBtnLaunch, WM_SETFONT, (WPARAM)hFontBtn, TRUE);
+          btnCape = CreateWindowA("BUTTON", "+ Cape",
+              WS_VISIBLE | WS_CHILD | BS_OWNERDRAW, 439, 182, 51, 26, hwnd, (HMENU)ID_BTN_IMPORT_CAPE, NULL, NULL);
+          SendMessage(btnCape, WM_SETFONT, (WPARAM)hFontSmall, TRUE);
+
+          hEditLog = CreateWindowA("EDIT", "Ready.\r\n",
+              WS_VISIBLE | WS_CHILD | WS_VSCROLL | ES_MULTILINE | ES_AUTOVSCROLL | ES_READONLY,
+              25, 224, 465, 115, hwnd, (HMENU)ID_EDIT_LOG, NULL, NULL);
+          SendMessage(hEditLog, WM_SETFONT, (WPARAM)hFontLog, TRUE);
+
+          hBtnLaunch = CreateWindowA("BUTTON", "LAUNCH MINECRAFT",
+              WS_VISIBLE | WS_CHILD | BS_OWNERDRAW, 25, 352, 465, 44, hwnd, (HMENU)ID_BTN_LAUNCH, NULL, NULL);
+          SendMessage(hBtnLaunch, WM_SETFONT, (WPARAM)hFontBtn, TRUE);
 
             origBtnProc = (WNDPROC)SetWindowLongPtrA(hBtnLaunch, GWLP_WNDPROC, (LONG_PTR)RoundedCtrlProc);
             SetWindowLongPtrA(hBtnLogin, GWLP_WNDPROC, (LONG_PTR)RoundedCtrlProc);
             SetWindowLongPtrA(btnMod, GWLP_WNDPROC, (LONG_PTR)RoundedCtrlProc);
             SetWindowLongPtrA(btnBrowse, GWLP_WNDPROC, (LONG_PTR)RoundedCtrlProc);
             SetWindowLongPtrA(hBtnTheme, GWLP_WNDPROC, (LONG_PTR)RoundedCtrlProc);
+            SetWindowLongPtrA(btnSkin, GWLP_WNDPROC, (LONG_PTR)RoundedCtrlProc);
+            SetWindowLongPtrA(btnCape, GWLP_WNDPROC, (LONG_PTR)RoundedCtrlProc);
             SetWindowLongPtrA(hBtnAuth, GWLP_WNDPROC, (LONG_PTR)RoundedCtrlProc);
             SetWindowLongPtrA(hBtnLoader, GWLP_WNDPROC, (LONG_PTR)RoundedCtrlProc);
             SetWindowLongPtrA(hBtnVersion, GWLP_WNDPROC, (LONG_PTR)RoundedCtrlProc);
@@ -1079,6 +1157,12 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) 
                 const char* themes[] = { "Light Theme", "Dark Theme" };
                 ShowPopupDropdown(hwnd, hBtnTheme, themes, 2, ID_MENU_BASE);
             }
+            else if (wmId == ID_BTN_IMPORT_SKIN) {
+                ImportSkinOrCape(hwnd, FALSE);
+            }
+            else if (wmId == ID_BTN_IMPORT_CAPE) {
+                ImportSkinOrCape(hwnd, TRUE);
+            }
             else if (wmId == ID_COMBO_AUTH) {
                 const char* auths[] = { "Username", "Microsoft" };
                 ShowPopupDropdown(hwnd, hBtnAuth, auths, 2, ID_MENU_BASE + 10);
@@ -1117,7 +1201,7 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) 
             else if (wmId == ID_BTN_LOGIN) {
                 char* gameDir = (char*)calloc(MAX_PATH, 1);
                 char* cmdArgs = (char*)calloc(1024, 1);
-
+ 
                 GetWindowTextA(hEditDir, gameDir, MAX_PATH);
                 size_t dirLen = strlen(gameDir);
                 while (dirLen > 0 && (gameDir[dirLen - 1] == '\\' || gameDir[dirLen - 1] == '/')) {
@@ -1126,16 +1210,18 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) 
 
                 if (dirLen > 0) {
                     CreateDirectories(gameDir);
-                    snprintf(cmdArgs, 1024, "--main-dir \"%s\" auth login", gameDir);
+                    snprintf(cmdArgs, 1024, "--main-dir \"%s\" auth login --no-browser", gameDir);
                 } else {
-                    snprintf(cmdArgs, 1024, "auth login");
+                    snprintf(cmdArgs, 1024, "auth login --no-browser");
                 }
 
+                ShellExecuteA(NULL, "open", "https://www.microsoft.com/link", NULL, NULL, SW_SHOWNORMAL);
                 RunCommandInBackground(hwnd, cmdArgs);
 
                 free(gameDir);
                 free(cmdArgs);
             }
+
             else if (wmId == ID_BTN_LAUNCH) {
                 if (isRunningCmd) {
                     BOOL wasDownloading = isDownloading;
@@ -1256,7 +1342,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
     HWND hwnd = CreateWindowExA(
         WS_EX_APPWINDOW, CLASS_NAME, "PortableMC",
         WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU | WS_MINIMIZEBOX,
-        CW_USEDEFAULT, CW_USEDEFAULT, 445, 455,
+        CW_USEDEFAULT, CW_USEDEFAULT, 525, 455,
         NULL, NULL, hInstance, NULL
     );
 
