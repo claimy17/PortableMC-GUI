@@ -15,8 +15,8 @@ jobs:
       - name: Compile Universal macOS Binary (Intel + Apple Silicon)
         run: |
           mkdir -p PortableMC-GUI.app/Contents/MacOS
-          mkdir -p PortableMC-GUI.app/Contents/Resources
-          clang -framework Cocoa -arch x86_64 -arch arm64 -O2 launcher_mac.m -o PortableMC-GUI.app/Contents/MacOS/PortableMC-GUI
+          mkdir -zp PortableMC-GUI.app/Contents/Resources
+          clang -framework Cocoa -fobjc-arc -arch x86_64 -arch arm64 -O2 launcher_mac.m -o PortableMC-GUI.app/Contents/MacOS/PortableMC-GUI
 
       - name: Generate App Icon (.icns) from icon.png
         run: |
