@@ -7,7 +7,7 @@ A fast, lightweight, native graphical user interface built in pure **C / Objecti
 
 ---
 
-## ✨ Features
+## Features
 
 - **Cross-Platform Native Binaries**:
   - **Windows (`Win32 C`)**: 3D cube startup animation, gradient backgrounds, `PortableMC-Setup` installer, and a ~260 KB standalone portable `.exe`.
@@ -21,7 +21,7 @@ A fast, lightweight, native graphical user interface built in pure **C / Objecti
 
 ---
 
-## 🚀 Installation & Usage
+## Installation & Usage
 
 Download packages from the **[Releases](../../releases)** page:
 
