@@ -29,7 +29,7 @@
 @end
 
 static const char *ALL_VERSIONS[] = {
-    "26.4", "26.1.2", "26.1.1", "26.1",
+    "26.3", "26.1.2", "26.1.1", "26.1",
     "1.21.11", "1.21.10", "1.21.8", "1.21.5", "1.21.4", "1.21.3", "1.21.1", "1.21",
     "1.20.6", "1.20.4", "1.20.2", "1.20.1", "1.20",
     "1.19.4", "1.19.2", "1.18.2", "1.17.1", "1.16.5", "1.12.2", "1.8.9", "1.7.10",
@@ -48,7 +48,7 @@ static BOOL is_beta_ver(const char *v) {
 }
 
 static void mkdir_p_mac(const char *path) {
-    char tmp;
+    char tmp[1024];
     snprintf(tmp, sizeof(tmp), "%s", path);
     size_t len = strlen(tmp);
     if (len > 0 && tmp[len - 1] == '/') tmp[len - 1] = '\0';
