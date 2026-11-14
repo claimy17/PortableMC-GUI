@@ -2,11 +2,6 @@
 
 <img width="441" height="453" alt="preview (2)" src="https://github.com/user-attachments/assets/a74a69bd-420b-46e2-9c45-60d397e7fe4d" /> <img width="441" height="453" alt="preview" src="https://github.com/user-attachments/assets/9cdfaddf-7127-40af-849a-f56b10c497a1" />
 
-
-A fast, lightweight, native Win32 graphical user interface written in pure C for **[PortableMC](https://github.com)**. Built with zero external runtime dependencies and an Apple-inspired aesthetic featuring vertical gradient backgrounds, rounded controls, custom modal dialogs, and instant Light/Dark theme switching.
-
----
-
 ## Features
 
 - **Automatic CLI Detection**: Automatically detects and uses either `portablemc.exe` (official release name) or `portablemc-cli.exe` located in the same directory—no manual renaming required.
@@ -21,13 +16,13 @@ A fast, lightweight, native Win32 graphical user interface written in pure C for
   - If cancelled mid-download, a custom rounded Apple-style modal dialog notifies you without risking accidental file deletion and provides a one-click **Open Folder** button to inspect or clean up partial files manually.
 - **Dual Authentication Modes**:
   - **Username (Offline)**: Launch directly with a custom offline nickname (`--username`).
-  - **Microsoft Account**: Integrated browser/device-code authentication (`auth login`) and authenticated launch (`-a`).
+  - **Microsoft Account**: One-click browser device-code authentication (`auth login --no-browser`) and authenticated launch (`-a`).
 - **Complete Version & Mod Loader Support (`0.0.11a` to `26.4`)**:
   - Supports **Vanilla**, **Fabric**, **Forge**, **NeoForge**, and **Quilt**.
   - Quick toggle filters for **Snapshot** and **Beta / Alpha / Classic** versions.
-- **Built-in Mod Importer & Live Console**:
-  - One-click `.jar` mod importer (`+ Mod`) that automatically creates and copies mods into your selected game directory's `mods` folder.
-  - Silent background execution (`CREATE_NO_WINDOW`) with clean, ANSI-stripped real-time output inside the GUI.
+- **Built-in Mod, Skin & Cape Importers**:
+  - **`+ Mod`**: One-click `.jar` mod importer that copies mods directly into your selected game directory's `mods` folder.
+  - **`+ Skin` & `+ Cape`**: In **Microsoft** mode, opens your official Minecraft profile page to manage skins and capes. In **Offline** mode (on Fabric, Forge, NeoForge, or Quilt), imports `.png` textures directly into `CustomSkinLoader\LocalSkin` for your username.
 
 ---
 
@@ -49,23 +44,15 @@ windres app.rc -O coff -o app.res
 gcc launcher.c app.res -o PortableMC-GUI.exe -mwindows -lcomdlg32 -lole32 -luuid -lshell32 -ldwmapi -lmsimg32 -luxtheme -lcomctl32
 ```
 
-### Linked Windows Libraries
-- `-mwindows`: Compiles as a native Win32 GUI application without spawning an external console window.
-- `-lcomdlg32`: Native file picker dialog for importing `.jar` mods.
-- `-lole32 -luuid -lshell32`: Folder browser dialog, shell execution, and system path resolution.
-- `-ldwmapi -luxtheme`: Native Dark Mode title bar and themed scrollbars.
-- `-lmsimg32`: Hardware-accelerated `GradientFill` rendering.
-- `-lcomctl32`: Common Controls support for input cue banners (placeholders).
-
 ---
 
 ## Usage
 
 1. Place `PortableMC-GUI.exe` alongside `portablemc.exe` (or `portablemc-cli.exe`) in the same folder.
 2. Open `PortableMC-GUI.exe`.
-3. Select **Username** (for offline play) or **Microsoft** (click **Login** first to authenticate your account).
+3. Select **Username** (for offline play) or **Microsoft** (click **Login** first to authenticate via browser code).
 4. Pick your **Mod Loader** (`Vanilla`, `fabric`, `forge`, `neoforge`, `quilt`) and **Version** (toggle **Snapshot** or **Beta** to expand the version list).
-5. Verify or change the **Game folder** (defaults to `%AppData%\.minecraft`).
+5. Verify or change the **Game folder** (defaults to `%AppData%\.minecraft`), and optionally import mods (`+ Mod`), skins (`+ Skin`), or capes (`+ Cape`).
 6. Click **LAUNCH MINECRAFT**. To abort at any time, click the progress bar again.
 
 ---
@@ -74,11 +61,10 @@ gcc launcher.c app.res -o PortableMC-GUI.exe -mwindows -lcomdlg32 -lole32 -luuid
 
 Because open-source binaries compiled with GCC do not include a commercial code-signing certificate, Windows Defender SmartScreen or Windows 11 Smart App Control may display a warning on first launch:
 - Click **More info > Run anyway** if SmartScreen appears, or
-- Add the folder to **Windows Security > Virus & threat protection > Exclusions**, or
 - Compile the executable directly from `launcher.c` on your own machine.
 
 ---
 
 ## License
 
-This project is open-source and free to use and modify. `PortableMC` is developed by its respective authors.
+This project is open-source under the MIT License. `PortableMC` is developed by its respective authors.
