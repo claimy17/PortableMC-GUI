@@ -3,12 +3,17 @@
 <img width="521" height="453" alt="Screenshot 2026-11-14 113345" src="https://github.com/user-attachments/assets/dad24598-8f1e-4dbe-801f-d8ed5c964cce" />
 <img width="521" height="453" alt="Screenshot 2026-11-14 113352" src="https://github.com/user-attachments/assets/2d5b7978-8003-440a-8e1c-326bc288c0c1" />
 
+A fast, lightweight, native Win32 graphical user interface written in pure C for **[PortableMC](https://github.com)**. Built with zero external runtime dependencies and an Apple-inspired aesthetic featuring vertical gradient backgrounds, a 3D startup animation, custom modal dialogs, and instant Light/Dark theme switching.
+
+---
 
 ## Features
 
+- **All-in-One Installer (`PortableMC-Setup`) or Portable Mode**:
+  - Choose between the single-click native C installer (which bundles both `PortableMC-GUI.exe` and `portablemc.exe` and creates Desktop & Start Menu shortcuts) or the standalone ~260 KB `PortableMC-GUI.exe`.
 - **Automatic CLI Detection**: Automatically detects and uses either `portablemc.exe` (official release name) or `portablemc-cli.exe` located in the same directory—no manual renaming required.
-- **Apple-Inspired UI & Themes**:
-  - Smooth vertical gradient backgrounds (`GradientFill`), custom owner-drawn rounded buttons, rounded input fields with dynamic placeholders, and custom dropdown menus.
+- **Apple-Inspired UI, 3D Intro & Themes**:
+  - Smooth 3D isometric cube assembly animation on startup, vertical gradient backgrounds (`GradientFill`), custom rounded controls, and custom modal dialogs.
   - Instant switching between **Light Theme** and **Dark Theme** (including native Windows immersive dark title bar and dark scrollbar theming).
 - **Live Status & Integrated Progress Bar**:
   - **Status Indicator**: Color-coded status dot next to the title (`Green` = Ready, `Orange` = Running/Downloading, `Red` = Error/Cancelled).
@@ -18,7 +23,7 @@
   - If cancelled mid-download, a custom rounded Apple-style modal dialog notifies you without risking accidental file deletion and provides a one-click **Open Folder** button to inspect or clean up partial files manually.
 - **Dual Authentication Modes**:
   - **Username (Offline)**: Launch directly with a custom offline nickname (`--username`).
-  - **Microsoft Account**: One-click browser device-code authentication (`auth login --no-browser`) and authenticated launch (`-a`).
+  - **Microsoft Account**: One-click browser device-code authentication (`auth login --no-browser` with automatic redirect to `://microsoft.com`) and authenticated launch (`-a`).
 - **Complete Version & Mod Loader Support (`0.0.11a` to `26.4`)**:
   - Supports **Vanilla**, **Fabric**, **Forge**, **NeoForge**, and **Quilt**.
   - Quick toggle filters for **Snapshot** and **Beta / Alpha / Classic** versions.
@@ -28,34 +33,35 @@
 
 ---
 
-## Requirements
+## Installation & Usage
 
-- **Operating System**: Windows 10 or Windows 11
-- **Backend CLI**: Place either `portablemc.exe` or `portablemc-cli.exe` in the **exact same folder** as `PortableMC-GUI.exe`.
-- **Compiler** *(only if building from source)*: MinGW-w64 (`gcc` and `windres`).
+Go to the **[Releases](../../releases)** page and choose one of the two options:
+
+### Option 1: All-in-One Installer *(Recommended)*
+1. Download **`PortableMC-Setup`** (`PortableMC-Setup-v1.2.0.exe`).
+2. Run the setup and click **Install PortableMC** (it automatically installs both `PortableMC-GUI.exe` and `portablemc.exe` into `%LocalAppData%\Programs\PortableMC` and creates **Desktop** and **Start Menu** shortcuts).
+3. Click **Launch PortableMC** (or open it from your Desktop / Start Menu).
+*(To uninstall later, run the setup again and click **Uninstall**).*
+
+### Option 2: Portable / Standalone
+1. Download **`PortableMC-GUI.exe`** from **[Releases](../../releases)**.
+2. Place `PortableMC-GUI.exe` in the **exact same folder** as `portablemc.exe` (or `portablemc-cli.exe`).
+3. Double-click `PortableMC-GUI.exe` to start.
 
 ---
 
 ## Building from Source
 
-1. Place `launcher.c`, `app.rc`, and `icon.ico` in the same directory.
-2. Compile the resource file and build `PortableMC-GUI.exe` using GCC:
+- **Requirements**: Windows 10 or Windows 11, and MinGW-w64 (`gcc` and `windres`).
 
+### 1. Build the Launcher (`PortableMC-GUI.exe`)
 ```bat
 windres app.rc -O coff -o app.res
 gcc launcher.c app.res -o PortableMC-GUI.exe -mwindows -lcomdlg32 -lole32 -luuid -lshell32 -ldwmapi -lmsimg32 -luxtheme -lcomctl32
 ```
 
----
-
-## Usage
-
-1. Place `PortableMC-GUI.exe` alongside `portablemc.exe` (or `portablemc-cli.exe`) in the same folder.
-2. Open `PortableMC-GUI.exe`.
-3. Select **Username** (for offline play) or **Microsoft** (click **Login** first to authenticate via browser code).
-4. Pick your **Mod Loader** (`Vanilla`, `fabric`, `forge`, `neoforge`, `quilt`) and **Version** (toggle **Snapshot** or **Beta** to expand the version list).
-5. Verify or change the **Game folder** (defaults to `%AppData%\.minecraft`), and optionally import mods (`+ Mod`), skins (`+ Skin`), or capes (`+ Cape`).
-6. Click **LAUNCH MINECRAFT**. To abort at any time, click the progress bar again.
+### 2. Build the All-in-One Setup (`PortableMC-Setup.exe`)
+Place `setup_pmc.c`, `PortableMC-GUI.exe`, `portablemc.exe` (or `portablemc-cli.exe`), and `icon.ico` in the same folder, then run `build_setup.bat` (or compile manually via `windres` and `gcc`).
 
 ---
 
@@ -63,10 +69,11 @@ gcc launcher.c app.res -o PortableMC-GUI.exe -mwindows -lcomdlg32 -lole32 -luuid
 
 Because open-source binaries compiled with GCC do not include a commercial code-signing certificate, Windows Defender SmartScreen or Windows 11 Smart App Control may display a warning on first launch:
 - Click **More info > Run anyway** if SmartScreen appears, or
-- Compile the executable directly from `launcher.c` on your own machine.
+- Compile the executables directly from `launcher.c` and `setup_pmc.c` on your own machine.
 
 ---
 
 ## License
 
 This project is open-source under the MIT License. `PortableMC` is developed by its respective authors.
+
