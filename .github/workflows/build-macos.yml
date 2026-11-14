@@ -16,7 +16,7 @@ jobs:
         run: |
           mkdir -p "PortableMC-GUI.app/Contents/MacOS"
           mkdir -p "PortableMC-GUI.app/Contents/Resources"
-          clang -framework Cocoa -fobjc-arc -arch x86_64 -arch arm64 -O2 launcher_mac.m -o "PortableMC-GUI.app/Contents/MacOS/PortableMC-GUI"
+          clang -framework Cocoa -fobjc-arc -mmacosx-version-min=11.0 -arch x86_64 -arch arm64 -O2 launcher_mac.m -o "PortableMC-GUI.app/Contents/MacOS/PortableMC-GUI"
 
       - name: Generate App Icon (.icns) from icon.png
         run: |
@@ -57,6 +57,8 @@ jobs:
             <string>AppIcon</string>
             <key>NSHighResolutionCapable</key>
             <true/>
+            <key>LSMinimumSystemVersion</key>
+            <string>11.0</string>
           </dict>
           </plist>
           EOF
