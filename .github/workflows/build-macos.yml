@@ -14,9 +14,9 @@ jobs:
 
       - name: Compile Universal macOS Binary (Intel + Apple Silicon)
         run: |
-          mkdir -p PortableMC-GUI.app/Contents/MacOS
-          mkdir -zp PortableMC-GUI.app/Contents/Resources
-          clang -framework Cocoa -fobjc-arc -arch x86_64 -arch arm64 -O2 launcher_mac.m -o PortableMC-GUI.app/Contents/MacOS/PortableMC-GUI
+          mkdir -p "PortableMC-GUI.app/Contents/MacOS"
+          mkdir -p "PortableMC-GUI.app/Contents/Resources"
+          clang -framework Cocoa -fobjc-arc -arch x86_64 -arch arm64 -O2 launcher_mac.m -o "PortableMC-GUI.app/Contents/MacOS/PortableMC-GUI"
 
       - name: Generate App Icon (.icns) from icon.png
         run: |
@@ -32,13 +32,13 @@ jobs:
             sips -z 512 512   icon.png --out AppIcon.iconset/icon_256x256@2x.png
             sips -z 512 512   icon.png --out AppIcon.iconset/icon_512x512.png
             sips -z 1024 1024 icon.png --out AppIcon.iconset/icon_512x512@2x.png
-            iconutil -c icns AppIcon.iconset -o PortableMC-GUI.app/Contents/Resources/AppIcon.icns
+            iconutil -c icns AppIcon.iconset -o "PortableMC-GUI.app/Contents/Resources/AppIcon.icns"
             rm -rf AppIcon.iconset
           fi
 
       - name: Create Info.plist and Ad-Hoc Sign
         run: |
-          cat > PortableMC-GUI.app/Contents/Info.plist <<EOF
+          cat > "PortableMC-GUI.app/Contents/Info.plist" <<EOF
           <?xml version="1.0" encoding="UTF-8"?>
           <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://apple.com">
           <plist version="1.0">
@@ -52,7 +52,7 @@ jobs:
             <key>CFBundlePackageType</key>
             <string>APPL</string>
             <key>CFBundleShortVersionString</key>
-            <string>1.2.0</string>
+            <string>1.2.1</string>
             <key>CFBundleIconFile</key>
             <string>AppIcon</string>
             <key>NSHighResolutionCapable</key>
@@ -60,8 +60,8 @@ jobs:
           </dict>
           </plist>
           EOF
-          codesign --force --deep --sign - PortableMC-GUI.app
-          zip -r PortableMC-GUI-macOS-Universal.zip PortableMC-GUI.app
+          codesign --force --deep --sign - "PortableMC-GUI.app"
+          zip -r PortableMC-GUI-macOS-Universal.zip "PortableMC-GUI.app"
           shasum -a 256 PortableMC-GUI-macOS-Universal.zip > SHA256SUMS-macOS.txt
 
       - name: Upload macOS Artifact
