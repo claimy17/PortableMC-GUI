@@ -45,12 +45,12 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Compile macOS App Bundle
+      - name: Compile macOS App Bundle (macOS 11+ Universal)
         run: |
           mkdir -p PortableMC-GUI.app/Contents/MacOS
           mkdir -p PortableMC-GUI.app/Contents/Resources
           cp icon.png PortableMC-GUI.app/Contents/Resources/icon.png || true
-          clang -fobjc-arc launcher_mac.m modrinth.c -framework Cocoa -o PortableMC-GUI.app/Contents/MacOS/PortableMC-GUI -Os
+          clang -fobjc-arc -arch arm64 -arch x86_64 -mmacosx-version-min=11.0 launcher_mac.m modrinth.c -framework Cocoa -o PortableMC-GUI.app/Contents/MacOS/PortableMC-GUI -Os
           cat << 'EOF' > PortableMC-GUI.app/Contents/Info.plist
           <?xml version="1.0" encoding="UTF-8"?>
           <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://apple.com">
@@ -66,6 +66,8 @@ jobs:
             <string>icon.png</string>
             <key>CFBundlePackageType</key>
             <string>APPL</string>
+            <key>LSMinimumSystemVersion</key>
+            <string>11.0</string>
             <key>NSHighResolutionCapable</key>
             <true/>
           </dict>
