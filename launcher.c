@@ -1,5 +1,6 @@
 #include <windows.h>
 #include <shlobj.h>
+#include "modrinth.h"
 #include <commdlg.h>
 #include <dwmapi.h>
 #include <uxtheme.h>
@@ -7,6 +8,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <math.h>
 
 #pragma comment(lib, "msimg32.lib")
 
@@ -25,6 +27,10 @@
 #define ID_COMBO_THEME     112
 #define ID_BTN_IMPORT_SKIN 113
 #define ID_BTN_IMPORT_CAPE 114
+#define ID_BTN_SEARCH_MODS 115
+#define ID_BTN_BOOST_FPS   116
+#define ID_BTN_ISOLATED    117
+#define ID_BTN_AUTOCLOSE   118
 
 #define ID_MENU_BASE       2000
 
@@ -36,8 +42,10 @@
 #endif
 
 HWND hBtnAuth, hEditUser, hBtnLogin, hBtnLoader, hBtnVersion, hBtnSnap, hBtnBeta, hEditDir, hEditLog, hBtnLaunch, hBtnTheme;
-HWND hTitle, lblLoader, lblVer, lblDir, btnMod, btnBrowse;
-HWND hTitle, lblLoader, lblVer, lblDir, btnMod, btnBrowse, btnSkin, btnCape;
+HWND hTitle, lblLoader, hVer, lblVer, lblDir, btnMod, btnBrowse, btnSkin, btnCape;
+HWND btnSearchMods, btnBoostFps, hBtnIsolated, hBtnAutoClose;
+int isIsolated = 0;
+int isAutoClose = 1;
 void ShowCustomAlert(HWND parent, const char* title, const char* message, const char* folderPath);
 void ImportSkinOrCape(HWND hwnd, BOOL isCape);
 HFONT hFontMain, hFontTitle, hFontLog, hFontBtn, hFontSmall;
@@ -267,6 +275,280 @@ void BrowseFolder(HWND hwnd) {
     }
 }
 
+#define IDT_INTRO_ANIM 901
+int introFrame = 0;
+const int INTRO_MAX_FRAMES = 95;
+BOOL showIntro = TRUE;
+
+void GetEffectiveGameDir(char* outDir, size_t maxLen) {
+    char base[MAX_PATH] = { 0 };
+    GetWindowTextA(hEditDir, base, MAX_PATH);
+    size_t len = strlen(base);
+    while (len > 0 && (base[len - 1] == '\\' || base[len - 1] == '/')) base[--len] = '\0';
+
+    if (isIsolated && len > 0) {
+        snprintf(outDir, maxLen, "%s\\instances\\%s", base, selectedVersion);
+    } else {
+        snprintf(outDir, maxLen, "%s", base);
+    }
+}
+
+void SaveConfigWin() {
+    char cfgPath[MAX_PATH], user[128], dir[MAX_PATH];
+    GetModuleFileNameA(NULL, cfgPath, MAX_PATH);
+    char* slash = strrchr(cfgPath, '\\');
+    if (slash) strcpy(slash + 1, "portablemc_gui.ini");
+    else strcpy(cfgPath, "portablemc_gui.ini");
+
+    GetWindowTextA(hEditUser, user, sizeof(user));
+    GetWindowTextA(hEditDir, dir, sizeof(dir));
+
+    FILE* f = fopen(cfgPath, "w");
+    if (!f) return;
+    fprintf(f, "dark=%d\nauth=%d\nuser=%s\nloader=%d\nver=%s\ndir=%s\nisolated=%d\nautoclose=%d\n",
+            isDarkTheme, authMode, user, loaderIdx, selectedVersion, dir, isIsolated, isAutoClose);
+    fclose(f);
+}
+
+void LoadConfigWin() {
+    char cfgPath[MAX_PATH];
+    GetModuleFileNameA(NULL, cfgPath, MAX_PATH);
+    char* slash = strrchr(cfgPath, '\\');
+    if (slash) strcpy(slash + 1, "portablemc_gui.ini");
+    else strcpy(cfgPath, "portablemc_gui.ini");
+
+    FILE* f = fopen(cfgPath, "r");
+    if (!f) return;
+    char line[512];
+    while (fgets(line, sizeof(line), f)) {
+        line[strcspn(line, "\r\n")] = '\0';
+        if (strncmp(line, "dark=", 5) == 0) isDarkTheme = atoi(line + 5);
+        else if (strncmp(line, "auth=", 5) == 0) authMode = atoi(line + 5);
+        else if (strncmp(line, "user=", 5) == 0) SetWindowTextA(hEditUser, line + 5);
+        else if (strncmp(line, "loader=", 7) == 0) loaderIdx = atoi(line + 7);
+        else if (strncmp(line, "ver=", 4) == 0) strncpy(selectedVersion, line + 4, sizeof(selectedVersion) - 1);
+        else if (strncmp(line, "dir=", 4) == 0 && strlen(line + 4) > 0) SetWindowTextA(hEditDir, line + 4);
+        else if (strncmp(line, "isolated=", 9) == 0) isIsolated = atoi(line + 9);
+        else if (strncmp(line, "autoclose=", 10) == 0) isAutoClose = atoi(line + 10);
+    }
+    fclose(f);
+    SetWindowTextA(hBtnTheme, isDarkTheme ? "Dark Theme" : "Light Theme");
+    SetWindowTextA(hBtnLoader, LOADERS[loaderIdx]);
+    SetWindowTextA(hBtnVersion, selectedVersion);
+}
+
+void RunBoostFps(HWND hwnd) {
+    if (loaderIdx == 0) {
+        ShowCustomAlert(hwnd, "Select a Mod Loader", "Boost FPS requires a Mod Loader (select 'fabric' recommended).", NULL);
+        return;
+    }
+    char gameDir[MAX_PATH];
+    GetEffectiveGameDir(gameDir, sizeof(gameDir));
+    CreateDirectories(gameDir);
+
+    int count = InstallBoostFPSPack(gameDir, LOADERS[loaderIdx], selectedVersion);
+    char modsDir[MAX_PATH], msg[256];
+    snprintf(modsDir, sizeof(modsDir), "%s\\mods", gameDir);
+    snprintf(msg, sizeof(msg), "Installed %d optimization mods (Sodium, Lithium, FerriteCore, EntityCulling) for %s!", count, selectedVersion);
+    ShowCustomAlert(hwnd, "Boost FPS Ready", msg, modsDir);
+}
+
+typedef struct {
+    char query[128];
+    HWND hEdit;
+    BOOL submitted;
+    BOOL done;
+} SearchInputData;
+
+LRESULT CALLBACK SearchInputProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
+    SearchInputData* data = (SearchInputData*)GetWindowLongPtrA(hwnd, GWLP_USERDATA);
+
+    switch (uMsg) {
+        case WM_CREATE: {
+            CREATESTRUCTA* cs = (CREATESTRUCTA*)lParam;
+            data = (SearchInputData*)cs->lpCreateParams;
+            SetWindowLongPtrA(hwnd, GWLP_USERDATA, (LONG_PTR)data);
+
+            RECT rc;
+            GetClientRect(hwnd, &rc);
+            HRGN hRgn = CreateRoundRectRgn(0, 0, rc.right + 1, rc.bottom + 1, 20, 20);
+            SetWindowRgn(hwnd, hRgn, TRUE);
+
+            data->hEdit = CreateWindowA("EDIT", "",
+                WS_VISIBLE | WS_CHILD | ES_AUTOHSCROLL | WS_BORDER,
+                24, 62, 302, 28, hwnd, (HMENU)10, NULL, NULL);
+            SendMessage(data->hEdit, WM_SETFONT, (WPARAM)hFontMain, TRUE);
+            SendMessageW(data->hEdit, EM_SETCUEBANNER, TRUE, (LPARAM)L"e.g. sodium, iris, jei, xaero...");
+            SetFocus(data->hEdit);
+
+            HWND hBtnCancel = CreateWindowA("BUTTON", "Cancel",
+                WS_VISIBLE | WS_CHILD | BS_OWNERDRAW, 24, 108, 145, 34, hwnd, (HMENU)2, NULL, NULL);
+            HWND hBtnSearch = CreateWindowA("BUTTON", "Search",
+                WS_VISIBLE | WS_CHILD | BS_OWNERDRAW, 181, 108, 145, 34, hwnd, (HMENU)1, NULL, NULL);
+            SendMessage(hBtnCancel, WM_SETFONT, (WPARAM)hFontBtn, TRUE);
+            SendMessage(hBtnSearch, WM_SETFONT, (WPARAM)hFontBtn, TRUE);
+            return 0;
+        }
+
+        case WM_ERASEBKGND: {
+            HDC hdc = (HDC)wParam;
+            RECT rc;
+            GetClientRect(hwnd, &rc);
+            COLORREF cTop = GetGradTopColor();
+            COLORREF cBot = GetGradBottomColor();
+            TRIVERTEX v[2] = {
+                { 0, 0, (COLOR16)(GetRValue(cTop) << 8), (COLOR16)(GetGValue(cTop) << 8), (COLOR16)(GetBValue(cTop) << 8), 0 },
+                { rc.right, rc.bottom, (COLOR16)(GetRValue(cBot) << 8), (COLOR16)(GetGValue(cBot) << 8), (COLOR16)(GetBValue(cBot) << 8), 0 }
+            };
+            GRADIENT_RECT gRect = { 0, 1 };
+            GradientFill(hdc, v, 2, &gRect, 1, GRADIENT_FILL_RECT_V);
+
+            HPEN pen = CreatePen(PS_SOLID, 1, GetBorderColor());
+            HBRUSH nullBr = (HBRUSH)GetStockObject(NULL_BRUSH);
+            HGDIOBJ oldP = SelectObject(hdc, pen);
+            HGDIOBJ oldB = SelectObject(hdc, nullBr);
+            RoundRect(hdc, 0, 0, rc.right - 1, rc.bottom - 1, 20, 20);
+            SelectObject(hdc, oldP); SelectObject(hdc, oldB); DeleteObject(pen);
+            return 1;
+        }
+
+        case WM_PAINT: {
+            PAINTSTRUCT ps;
+            HDC hdc = BeginPaint(hwnd, &ps);
+            SetBkMode(hdc, TRANSPARENT);
+            RECT rcTitle = { 24, 20, 326, 48 };
+            SelectObject(hdc, hFontTitle);
+            SetTextColor(hdc, GetTextColorCustom());
+            DrawTextA(hdc, "Search Modrinth", -1, &rcTitle, DT_LEFT | DT_VCENTER | DT_SINGLELINE);
+            EndPaint(hwnd, &ps);
+            return 0;
+        }
+
+        case WM_DRAWITEM: {
+            LPDRAWITEMSTRUCT dis = (LPDRAWITEMSTRUCT)lParam;
+            if (dis->CtlType == ODT_BUTTON) {
+                HDC hdc = dis->hDC;
+                RECT rc = dis->rcItem;
+                BOOL isSearch = (dis->CtlID == 1);
+                COLORREF bg = isSearch ? GetAccentColor() : GetSecBtnColor();
+                COLORREF fg = isSearch ? RGB(255, 255, 255) : GetTextColorCustom();
+
+                HBRUSH hBr = CreateSolidBrush(bg);
+                HPEN hPn = CreatePen(PS_SOLID, 1, bg);
+                HGDIOBJ oldB = SelectObject(hdc, hBr);
+                HGDIOBJ oldP = SelectObject(hdc, hPn);
+                RoundRect(hdc, rc.left, rc.top, rc.right, rc.bottom, 14, 14);
+                SelectObject(hdc, oldB); SelectObject(hdc, oldP);
+                DeleteObject(hBr); DeleteObject(hPn);
+
+                char txt[64];
+                GetWindowTextA(dis->hwndItem, txt, sizeof(txt));
+                SetBkMode(hdc, TRANSPARENT);
+                SetTextColor(hdc, fg);
+                SelectObject(hdc, hFontBtn);
+                DrawTextA(hdc, txt, -1, &rc, DT_CENTER | DT_VCENTER | DT_SINGLELINE);
+                return TRUE;
+            }
+            break;
+        }
+
+        case WM_COMMAND: {
+            int id = LOWORD(wParam);
+            if (id == 1 && data) {
+                GetWindowTextA(data->hEdit, data->query, sizeof(data->query));
+                data->submitted = TRUE;
+                data->done = TRUE;
+                DestroyWindow(hwnd);
+            } else if (id == 2 && data) {
+                data->done = TRUE;
+                DestroyWindow(hwnd);
+            }
+            return 0;
+        }
+
+        case WM_CLOSE:
+            if (data) data->done = TRUE;
+            DestroyWindow(hwnd);
+            return 0;
+    }
+    return DefWindowProcA(hwnd, uMsg, wParam, lParam);
+}
+
+void RunSearchMods(HWND hwnd) {
+    if (loaderIdx == 0) {
+        ShowCustomAlert(hwnd, "Select a Mod Loader", "Please select Fabric, Forge, NeoForge, or Quilt before searching mods.", NULL);
+        return;
+    }
+
+    static BOOL reg = FALSE;
+    if (!reg) {
+        WNDCLASSA wc = { 0 };
+        wc.lpfnWndProc = SearchInputProc;
+        wc.hInstance = GetModuleHandleA(NULL);
+        wc.lpszClassName = "PortableMCSearchInput";
+        wc.hCursor = LoadCursor(NULL, IDC_ARROW);
+        RegisterClassA(&wc);
+        reg = TRUE;
+    }
+
+    SearchInputData sData = { {0}, NULL, FALSE, FALSE };
+    RECT rcParent;
+    GetWindowRect(hwnd, &rcParent);
+    int w = 350, h = 162;
+    int x = rcParent.left + ((rcParent.right - rcParent.left) - w) / 2;
+    int y = rcParent.top + ((rcParent.bottom - rcParent.top) - h) / 2;
+
+    EnableWindow(hwnd, FALSE);
+    CreateWindowExA(WS_EX_TOPMOST | WS_EX_TOOLWINDOW, "PortableMCSearchInput", "Search",
+        WS_POPUP | WS_VISIBLE, x, y, w, h, hwnd, NULL, GetModuleHandleA(NULL), &sData);
+
+    MSG msg;
+    while (!sData.done && GetMessage(&msg, NULL, 0, 0)) {
+        if (msg.message == WM_KEYDOWN && msg.wParam == VK_RETURN) {
+            SendMessageA(GetParent(msg.hwnd), WM_COMMAND, 1, 0);
+            continue;
+        }
+        TranslateMessage(&msg);
+        DispatchMessage(&msg);
+    }
+    EnableWindow(hwnd, TRUE);
+    SetForegroundWindow(hwnd);
+
+    if (!sData.submitted || strlen(sData.query) == 0) return;
+
+    char slugs[8][64] = {{0}};
+    char titles[8][128] = {{0}};
+    int found = SearchModrinthProjects(sData.query, LOADERS[loaderIdx], selectedVersion, slugs, titles, 8);
+    if (found <= 0) {
+        ShowCustomAlert(hwnd, "No Results", "No compatible mods found on Modrinth for this search.", NULL);
+        return;
+    }
+
+    RECT rc;
+    GetWindowRect(btnSearchMods, &rc);
+    HMENU hMenu = CreatePopupMenu();
+    for (int i = 0; i < found; i++) {
+        AppendMenuA(hMenu, MF_STRING, 5000 + i, titles[i]);
+    }
+    int cmd = TrackPopupMenu(hMenu, TPM_RETURNCMD | TPM_LEFTALIGN | TPM_TOPALIGN, rc.left, rc.bottom + 2, 0, hwnd, NULL);
+    DestroyMenu(hMenu);
+
+    if (cmd >= 5000 && cmd < 5000 + found) {
+        int idx = cmd - 5000;
+        char gameDir[MAX_PATH], modsDir[MAX_PATH], alertMsg[256];
+        GetEffectiveGameDir(gameDir, sizeof(gameDir));
+        CreateDirectories(gameDir);
+        snprintf(modsDir, sizeof(modsDir), "%s\\mods", gameDir);
+
+        if (DownloadModFromModrinth(slugs[idx], gameDir, LOADERS[loaderIdx], selectedVersion)) {
+            snprintf(alertMsg, sizeof(alertMsg), "'%s' was downloaded and installed!", titles[idx]);
+            ShowCustomAlert(hwnd, "Mod Installed", alertMsg, modsDir);
+        } else {
+            ShowCustomAlert(hwnd, "Download Failed", "Could not download the selected mod.", NULL);
+        }
+    }
+}
+
 void ImportModJar(HWND hwnd) {
     char* baseDir = (char*)calloc(MAX_PATH, 1);
     GetWindowTextA(hEditDir, baseDir, MAX_PATH);
@@ -310,6 +592,18 @@ void ImportModJar(HWND hwnd) {
     }
     free(baseDir);
     free(modFile);
+}
+
+BOOL HasCustomSkinLoaderInMods(const char* modsDir) {
+    char searchPath[MAX_PATH];
+    snprintf(searchPath, sizeof(searchPath), "%s\\CustomSkinLoader*.jar", modsDir);
+    WIN32_FIND_DATAA fd;
+    HANDLE hFind = FindFirstFileA(searchPath, &fd);
+    if (hFind != INVALID_HANDLE_VALUE) {
+        FindClose(hFind);
+        return TRUE;
+    }
+    return FALSE;
 }
 
 void ImportSkinOrCape(HWND hwnd, BOOL isCape) {
@@ -365,13 +659,62 @@ void ImportSkinOrCape(HWND hwnd, BOOL isCape) {
         snprintf(destPath, MAX_PATH, "%s\\%s.png", targetFolder, username);
 
         if (CopyFileA(pngFile, destPath, FALSE)) {
-            char msg[MAX_PATH + 256];
-            snprintf(msg, sizeof(msg),
-                "%s saved for '%s'!\nMake sure CustomSkinLoader is inside your mods folder.\n\nSaved to:\n%s",
-                isCape ? "Cape" : "Skin", username, targetFolder);
-            ShowCustomAlert(hwnd, isCape ? "Cape Imported" : "Skin Imported", msg, targetFolder);
-        } else {
-            ShowCustomAlert(hwnd, "Import Error", "Failed to copy the .png file into LocalSkin folder.", NULL);
+            // Crea automaticamente CustomSkinLoader.json con LocalSkin prioritario e checkPNG: false
+            char cslRoot[MAX_PATH], jsonPath[MAX_PATH];
+            snprintf(cslRoot, MAX_PATH, "%s\\CustomSkinLoader", baseDir);
+            snprintf(jsonPath, MAX_PATH, "%s\\CustomSkinLoader.json", cslRoot);
+
+            if (GetFileAttributesA(jsonPath) == INVALID_FILE_ATTRIBUTES) {
+                FILE* fjson = fopen(jsonPath, "w");
+                if (fjson) {
+                    fprintf(fjson,
+                        "{\n"
+                        "  \"enable\": true,\n"
+                        "  \"enableDynamicSkull\": true,\n"
+                        "  \"enableTransparentSkin\": true,\n"
+                        "  \"forceLoadAllTextures\": true,\n"
+                        "  \"enableLocalProfile\": true,\n"
+                        "  \"loadlist\": [\n"
+                        "    {\n"
+                        "      \"name\": \"LocalSkin\",\n"
+                        "      \"type\": \"Legacy\",\n"
+                        "      \"checkPNG\": false,\n"
+                        "      \"skin\": \"LocalSkin/skins/{USERNAME}.png\",\n"
+                        "      \"cape\": \"LocalSkin/capes/{USERNAME}.png\",\n"
+                        "      \"elytra\": \"LocalSkin/elytras/{USERNAME}.png\"\n"
+                        "    }\n"
+                        "  ]\n"
+                        "}\n"
+                    );
+                    fclose(fjson);
+                }
+            }
+
+        char modsDir[MAX_PATH];
+        snprintf(modsDir, sizeof(modsDir), "%s\\mods", baseDir);
+        CreateDirectories(modsDir);
+
+        const char* statusNote = "CustomSkinLoader is already installed in your mods folder.";
+        if (!HasCustomSkinLoaderInMods(modsDir)) {
+            int loaderIdx = (int)SendMessageA(lblLoader, CB_GETCURSEL, 0, 0);
+            int verIdx = (int)SendMessageA(hVer, CB_GETCURSEL, 0, 0);
+            char verStr[64] = "26.3";
+            if (verIdx != CB_ERR) {
+                SendMessageA(hVer, CB_GETLBTEXT, verIdx, (LPARAM)verStr);
+            }
+            const char* loaderStr = (loaderIdx >= 1 && loaderIdx <= 4) ? LOADERS[loaderIdx] : "fabric";
+
+            if (DownloadModFromModrinth("customskinloader", baseDir, loaderStr, selectedVersion)) {
+                statusNote = "CustomSkinLoader was automatically downloaded to your mods folder!";
+            }
+            else {
+                statusNote = "Could not auto-download CustomSkinLoader. Please import the .jar manually via '+ Mod'.";
+            }
+        }
+
+        char finalMsg[512];
+        snprintf(finalMsg, sizeof(finalMsg), "Texture saved for '%s'!\n\n%s", username, statusNote);
+        MessageBoxA(hwnd, finalMsg, isCape ? "Cape Imported" : "Skin Imported", MB_OK | MB_ICONINFORMATION);
         }
     }
 }
@@ -415,6 +758,10 @@ void CleanAndSendLog(HWND hwnd, const char* raw) {
         }
         if (strstr(clean, "Starting ") || strstr(clean, "Launching ")) {
             isDownloading = FALSE;
+        }
+        if (isAutoClose && isRunningCmd && (strstr(clean, "Launching ") || strstr(clean, "Setting user:"))) {
+            SaveConfigWin();
+            PostMessageA(hwnd, WM_CLOSE, 0, 0);
         }
 
         int bestPct = -1;
@@ -797,6 +1144,134 @@ void ShowCustomAlert(HWND parent, const char* title, const char* message, const 
     SetForegroundWindow(parent);
 }
 
+BOOL CALLBACK SetChildVisibleProc(HWND hChild, LPARAM lParam) {
+    ShowWindow(hChild, (int)lParam);
+    return TRUE;
+}
+
+void DrawGradientQuad(HDC hdc, POINT p0, COLORREF c0, POINT p1, COLORREF c1, POINT p2, COLORREF c2, POINT p3, COLORREF c3) {
+    TRIVERTEX v[4];
+    POINT pts[4] = { p0, p1, p2, p3 };
+    COLORREF cols[4] = { c0, c1, c2, c3 };
+
+    for (int i = 0; i < 4; i++) {
+        v[i].x = pts[i].x;
+        v[i].y = pts[i].y;
+        v[i].Red   = (COLOR16)(GetRValue(cols[i]) << 8);
+        v[i].Green = (COLOR16)(GetGValue(cols[i]) << 8);
+        v[i].Blue  = (COLOR16)(GetBValue(cols[i])  << 8);
+        v[i].Alpha = 0x0000;
+    }
+
+    GRADIENT_TRIANGLE tris[2] = {
+        { 0, 1, 2 },
+        { 0, 2, 3 }
+    };
+
+    GradientFill(hdc, v, 4, tris, 2, GRADIENT_FILL_TRIANGLE);
+}
+
+void DrawIntroAnimation(HDC hdc, RECT rc) {
+    int cx = (rc.right - rc.left) / 2;
+    int cy = (rc.bottom - rc.top) / 2 - 10;
+
+    float t = (float)introFrame / (float)INTRO_MAX_FRAMES;
+    COLORREF bg = isDarkTheme ? RGB(24, 24, 28) : RGB(242, 242, 247);
+
+    // Resta al 100% di opacità fino a t = 0.82, poi sfuma nell'ultimo 0.18
+    float globalAlpha = (t < 0.82f) ? 1.0f : (1.0f - (t - 0.82f) / 0.18f);
+    if (globalAlpha < 0.0f) globalAlpha = 0.0f;
+
+    #define BLEND_BG(r, g, b) RGB( \
+        (int)(GetRValue(bg) + ((r) - GetRValue(bg)) * globalAlpha), \
+        (int)(GetGValue(bg) + ((g) - GetGValue(bg)) * globalAlpha), \
+        (int)(GetBValue(bg) + ((b) - GetBValue(bg)) * globalAlpha))
+
+    // FASE 1: Pallini che esplodono e si riuniscono entro t = 0.52
+    if (t < 0.52f) {
+        float pT = t / 0.52f;
+        float spread = sinf(pT * 3.14159265f);
+        float easeSpread = 1.0f - (1.0f - spread) * (1.0f - spread);
+
+        int numDots = 12;
+        HGDIOBJ oldPen = SelectObject(hdc, GetStockObject(NULL_PEN));
+
+        for (int i = 0; i < numDots; i++) {
+            float angle = (6.2831853f / numDots) * i + pT * 2.2f;
+            float dist = easeSpread * (55.0f + (i % 3) * 18.0f);
+
+            int dx = cx + (int)(cosf(angle) * dist);
+            int dy = cy + (int)(sinf(angle) * dist);
+            int dotR = (int)(5.0f + 4.0f * (1.0f - easeSpread));
+
+            COLORREF col = (i % 2 == 0) ? BLEND_BG(0, 140, 255) : BLEND_BG(52, 199, 110);
+            HBRUSH br = CreateSolidBrush(col);
+            HGDIOBJ oldB = SelectObject(hdc, br);
+            Ellipse(hdc, dx - dotR, dy - dotR, dx + dotR, dy + dotR);
+            SelectObject(hdc, oldB);
+            DeleteObject(br);
+        }
+        SelectObject(hdc, oldPen);
+    }
+
+    // FASE 2 & 3: Il cubo si forma entro t = 0.58 e resta FISSO fino a t = 0.82 (~0.75 secondi)
+    if (t > 0.28f) {
+        float cT = (t - 0.28f) / 0.30f; // Raggiunge 1.0 esattamente a t = 0.58
+        if (cT > 1.0f) cT = 1.0f;
+
+        float easeScale = (cT < 0.5f) ? (2.0f * cT * cT) : (1.0f - powf(-2.0f * cT + 2.0f, 2.0f) / 2.0f);
+        if (easeScale > 1.0f) easeScale = 1.0f;
+
+        float S = 48.0f * easeScale;
+        float dx = S * 0.8660254f;
+        float dy = S * 0.5f;
+
+        POINT pCenter = { cx, cy };
+        POINT pTop    = { cx, cy - (int)S };
+        POINT pTopR   = { cx + (int)dx, cy - (int)dy };
+        POINT pBotR   = { cx + (int)dx, cy + (int)dy };
+        POINT pBot    = { cx, cy + (int)S };
+        POINT pBotL   = { cx - (int)dx, cy + (int)dy };
+        POINT pTopL   = { cx - (int)dx, cy - (int)dy };
+
+        // Faccia superiore: sfumatura verde smeraldo -> ciano
+        DrawGradientQuad(hdc,
+            pTop,    BLEND_BG(80, 230, 120),
+            pTopR,   BLEND_BG(40, 205, 165),
+            pCenter, BLEND_BG(30, 185, 185),
+            pTopL,   BLEND_BG(52, 215, 130)
+        );
+
+        // Faccia sinistra: sfumatura verde-acqua in alto -> blu elettrico in basso
+        DrawGradientQuad(hdc,
+            pTopL,   BLEND_BG(45, 200, 150),
+            pCenter, BLEND_BG(25, 175, 210),
+            pBot,    BLEND_BG(0, 110, 255),
+            pBotL,   BLEND_BG(10, 135, 240)
+        );
+
+        // Faccia destra: sfumatura ciano-verde in alto -> blu profondo in basso
+        DrawGradientQuad(hdc,
+            pCenter, BLEND_BG(25, 175, 210),
+            pTopR,   BLEND_BG(35, 190, 175),
+            pBotR,   BLEND_BG(15, 95, 205),
+            pBot,    BLEND_BG(0, 110, 255)
+        );
+    }
+
+    #undef BLEND_BG
+
+    SetBkMode(hdc, TRANSPARENT);
+    COLORREF txtBase = isDarkTheme ? RGB(255, 255, 255) : RGB(28, 28, 30);
+    int tr = (int)(GetRValue(bg) + (GetRValue(txtBase) - GetRValue(bg)) * globalAlpha);
+    int tg = (int)(GetGValue(bg) + (GetGValue(txtBase) - GetGValue(bg)) * globalAlpha);
+    int tb = (int)(GetBValue(bg) + (GetBValue(txtBase) - GetBValue(bg)) * globalAlpha);
+    SetTextColor(hdc, RGB(tr, tg, tb));
+
+    RECT rcTxt = { 0, cy + 62, rc.right, cy + 92 };
+    DrawTextA(hdc, "PortableMC", -1, &rcTxt, DT_CENTER | DT_SINGLELINE);
+}
+
 LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
     switch (uMsg) {
         case WM_CREATE: {
@@ -869,17 +1344,13 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) 
           strcat(defaultDir, "\\.minecraft");
 
           hEditDir = CreateWindowA("EDIT", defaultDir,
-              WS_VISIBLE | WS_CHILD | ES_AUTOHSCROLL, 175, 182, 92, 26, hwnd, (HMENU)ID_EDIT_DIR, NULL, NULL);
+              WS_VISIBLE | WS_CHILD | ES_AUTOHSCROLL, 175, 182, 147, 26, hwnd, (HMENU)ID_EDIT_DIR, NULL, NULL);
           SendMessage(hEditDir, WM_SETFONT, (WPARAM)hFontMain, TRUE);
           free(defaultDir);
 
           btnBrowse = CreateWindowA("BUTTON", "Browse",
-              WS_VISIBLE | WS_CHILD | BS_OWNERDRAW, 272, 182, 52, 26, hwnd, (HMENU)ID_BTN_BROWSE_DIR, NULL, NULL);
+              WS_VISIBLE | WS_CHILD | BS_OWNERDRAW, 327, 182, 52, 26, hwnd, (HMENU)ID_BTN_BROWSE_DIR, NULL, NULL);
           SendMessage(btnBrowse, WM_SETFONT, (WPARAM)hFontSmall, TRUE);
-
-          btnMod = CreateWindowA("BUTTON", "+ Mod",
-              WS_VISIBLE | WS_CHILD | BS_OWNERDRAW, 329, 182, 50, 26, hwnd, (HMENU)ID_BTN_IMPORT_MOD, NULL, NULL);
-          SendMessage(btnMod, WM_SETFONT, (WPARAM)hFontSmall, TRUE);
 
           btnSkin = CreateWindowA("BUTTON", "+ Skin",
               WS_VISIBLE | WS_CHILD | BS_OWNERDRAW, 384, 182, 50, 26, hwnd, (HMENU)ID_BTN_IMPORT_SKIN, NULL, NULL);
@@ -889,16 +1360,41 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) 
               WS_VISIBLE | WS_CHILD | BS_OWNERDRAW, 439, 182, 51, 26, hwnd, (HMENU)ID_BTN_IMPORT_CAPE, NULL, NULL);
           SendMessage(btnCape, WM_SETFONT, (WPARAM)hFontSmall, TRUE);
 
+	  btnMod = CreateWindowA("BUTTON", "+ Mod",
+      	      WS_VISIBLE | WS_CHILD | BS_OWNERDRAW, 25, 220, 62, 26, hwnd, (HMENU)ID_BTN_IMPORT_MOD, NULL, NULL);
+	  SendMessage(btnMod, WM_SETFONT, (WPARAM)hFontSmall, TRUE);
+
+	  btnSearchMods = CreateWindowA("BUTTON", "Search Mods",
+   	      WS_VISIBLE | WS_CHILD | BS_OWNERDRAW, 92, 220, 96, 26, hwnd, (HMENU)ID_BTN_SEARCH_MODS, NULL, NULL);
+	  SendMessage(btnSearchMods, WM_SETFONT, (WPARAM)hFontSmall, TRUE);
+
+	  btnBoostFps = CreateWindowA("BUTTON", "Boost FPS",
+	      WS_VISIBLE | WS_CHILD | BS_OWNERDRAW, 193, 220, 82, 26, hwnd, (HMENU)ID_BTN_BOOST_FPS, NULL, NULL);
+	  SendMessage(btnBoostFps, WM_SETFONT, (WPARAM)hFontSmall, TRUE);
+
+	  hBtnIsolated = CreateWindowA("BUTTON", "Isolated",
+ 	      WS_VISIBLE | WS_CHILD | BS_OWNERDRAW, 280, 220, 68, 26, hwnd, (HMENU)ID_BTN_ISOLATED, NULL, NULL);
+	  SendMessage(hBtnIsolated, WM_SETFONT, (WPARAM)hFontSmall, TRUE);
+
+	  hBtnAutoClose = CreateWindowA("BUTTON", "Auto-Close",
+  	      WS_VISIBLE | WS_CHILD | BS_OWNERDRAW, 353, 220, 137, 26, hwnd, (HMENU)ID_BTN_AUTOCLOSE, NULL, NULL);
+	  SendMessage(hBtnAutoClose, WM_SETFONT, (WPARAM)hFontSmall, TRUE);
+
           hEditLog = CreateWindowA("EDIT", "Ready.\r\n",
               WS_VISIBLE | WS_CHILD | WS_VSCROLL | ES_MULTILINE | ES_AUTOVSCROLL | ES_READONLY,
-              25, 224, 465, 115, hwnd, (HMENU)ID_EDIT_LOG, NULL, NULL);
+              25, 258, 465, 118, hwnd, (HMENU)ID_EDIT_LOG, NULL, NULL);
           SendMessage(hEditLog, WM_SETFONT, (WPARAM)hFontLog, TRUE);
 
           hBtnLaunch = CreateWindowA("BUTTON", "LAUNCH MINECRAFT",
-              WS_VISIBLE | WS_CHILD | BS_OWNERDRAW, 25, 352, 465, 44, hwnd, (HMENU)ID_BTN_LAUNCH, NULL, NULL);
+              WS_VISIBLE | WS_CHILD | BS_OWNERDRAW, 25, 388, 465, 44, hwnd, (HMENU)ID_BTN_LAUNCH, NULL, NULL);
           SendMessage(hBtnLaunch, WM_SETFONT, (WPARAM)hFontBtn, TRUE);
 
             origBtnProc = (WNDPROC)SetWindowLongPtrA(hBtnLaunch, GWLP_WNDPROC, (LONG_PTR)RoundedCtrlProc);
+            SetWindowLongPtrA(btnSearchMods, GWLP_WNDPROC, (LONG_PTR)RoundedCtrlProc);
+            SetWindowLongPtrA(btnBoostFps, GWLP_WNDPROC, (LONG_PTR)RoundedCtrlProc);
+            SetWindowLongPtrA(hBtnIsolated, GWLP_WNDPROC, (LONG_PTR)RoundedCtrlProc);
+            SetWindowLongPtrA(hBtnAutoClose, GWLP_WNDPROC, (LONG_PTR)RoundedCtrlProc);
+	    LoadConfigWin();
             SetWindowLongPtrA(hBtnLogin, GWLP_WNDPROC, (LONG_PTR)RoundedCtrlProc);
             SetWindowLongPtrA(btnMod, GWLP_WNDPROC, (LONG_PTR)RoundedCtrlProc);
             SetWindowLongPtrA(btnBrowse, GWLP_WNDPROC, (LONG_PTR)RoundedCtrlProc);
@@ -916,6 +1412,24 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) 
             SetWindowLongPtrA(hEditLog, GWLP_WNDPROC, (LONG_PTR)RoundedEditProc);
 
             UpdateThemeBrushes(hwnd);
+            EnumChildWindows(hwnd, SetChildVisibleProc, SW_HIDE);
+            SetTimer(hwnd, IDT_INTRO_ANIM, 33, NULL);
+            break;
+        }
+
+        case WM_TIMER: {
+            if (wParam == IDT_INTRO_ANIM) {
+                introFrame++;
+                if (introFrame >= INTRO_MAX_FRAMES) {
+                    KillTimer(hwnd, IDT_INTRO_ANIM);
+                    showIntro = FALSE;
+                    EnumChildWindows(hwnd, SetChildVisibleProc, SW_SHOW);
+                    UpdateAuthUI();
+                    InvalidateRect(hwnd, NULL, TRUE);
+                } else {
+                    InvalidateRect(hwnd, NULL, FALSE);
+                }
+            }
             break;
         }
 
@@ -923,22 +1437,41 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) 
             PAINTSTRUCT ps;
             HDC hdc = BeginPaint(hwnd, &ps);
 
-            COLORREF statusCol = RGB(52, 199, 89); 
-            if (appStatus == 1) statusCol = RGB(255, 159, 10); 
-            else if (appStatus == 2) statusCol = RGB(255, 59, 48); 
+            if (showIntro) {
+                RECT rc;
+                GetClientRect(hwnd, &rc);
+                HDC memDC = CreateCompatibleDC(hdc);
+                HBITMAP memBmp = CreateCompatibleBitmap(hdc, rc.right, rc.bottom);
+                HGDIOBJ oldBmp = SelectObject(memDC, memBmp);
 
-            HBRUSH hBr = CreateSolidBrush(statusCol);
-            HPEN hPn = CreatePen(PS_SOLID, 1, statusCol);
-            HGDIOBJ oldB = SelectObject(hdc, hBr);
-            HGDIOBJ oldP = SelectObject(hdc, hPn);
+                SendMessage(hwnd, WM_ERASEBKGND, (WPARAM)memDC, 0);
+                DrawIntroAnimation(memDC, rc);
 
-            Ellipse(hdc, 152, 27, 162, 37);
+                BitBlt(hdc, 0, 0, rc.right, rc.bottom, memDC, 0, 0, SRCCOPY);
+                SelectObject(memDC, oldBmp);
+                DeleteObject(memBmp);
+                DeleteDC(memDC);
+            } else {
+                RECT rc;
+                GetClientRect(hwnd, &rc);
+                SendMessage(hwnd, WM_ERASEBKGND, (WPARAM)hdc, 0);
 
-            SelectObject(hdc, oldB);
-            SelectObject(hdc, oldP);
-            DeleteObject(hBr);
-            DeleteObject(hPn);
+                COLORREF dotCol = RGB(52, 199, 89);
+                if (appStatus == 1) dotCol = RGB(255, 149, 0);
+                else if (appStatus == 2) dotCol = RGB(255, 59, 48);
 
+                HBRUSH br = CreateSolidBrush(dotCol);
+                HPEN pn = CreatePen(PS_SOLID, 1, dotCol);
+                HGDIOBJ oldB = SelectObject(hdc, br);
+                HGDIOBJ oldP = SelectObject(hdc, pn);
+
+                Ellipse(hdc, 152, 26, 162, 36);
+
+                SelectObject(hdc, oldB);
+                SelectObject(hdc, oldP);
+                DeleteObject(br);
+                DeleteObject(pn);
+            }
             EndPaint(hwnd, &ps);
             return 0;
         }
@@ -958,7 +1491,10 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) 
                 UINT id = dis->CtlID;
                 BOOL isPrimary = (id == ID_BTN_LAUNCH);
                 BOOL isDropdown = (id == ID_COMBO_THEME || id == ID_COMBO_AUTH || id == ID_COMBO_LOADER || id == ID_COMBO_VERSION);
-                BOOL isToggleActive = (id == ID_BTN_TOGGLE_SNAP && showSnapshots) || (id == ID_BTN_TOGGLE_BETA && showBetas);
+                BOOL isToggleActive = (id == ID_BTN_TOGGLE_SNAP && showSnapshots) ||
+                      (id == ID_BTN_TOGGLE_BETA && showBetas) ||
+                      (id == ID_BTN_ISOLATED && isIsolated) ||
+                      (id == ID_BTN_AUTOCLOSE && isAutoClose);
                 BOOL isDisabled = (dis->itemState & ODS_DISABLED);
                 BOOL isPressed = (dis->itemState & ODS_SELECTED);
                 BOOL isHovered = (dis->hwndItem == hHoveredBtn);
@@ -1163,6 +1699,21 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) 
             else if (wmId == ID_BTN_IMPORT_CAPE) {
                 ImportSkinOrCape(hwnd, TRUE);
             }
+            else if (wmId == ID_BTN_SEARCH_MODS) {
+                RunSearchMods(hwnd);
+            }
+            else if (wmId == ID_BTN_BOOST_FPS) {
+                RunBoostFps(hwnd);
+            }
+            else if (wmId == ID_BTN_ISOLATED) {
+                isIsolated = !isIsolated;
+                InvalidateRect(hBtnIsolated, NULL, FALSE);
+            }
+            else if (wmId == ID_BTN_AUTOCLOSE) {
+                isAutoClose = !isAutoClose;
+                InvalidateRect(hBtnAutoClose, NULL, FALSE);
+            }
+
             else if (wmId == ID_COMBO_AUTH) {
                 const char* auths[] = { "Username", "Microsoft" };
                 ShowPopupDropdown(hwnd, hBtnAuth, auths, 2, ID_MENU_BASE + 10);
@@ -1260,7 +1811,7 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) 
                 const char* loader = LOADERS[loaderIdx];
 
                 GetWindowTextA(hEditUser, user, 256);
-                GetWindowTextA(hEditDir, gameDir, MAX_PATH);
+                GetEffectiveGameDir(gameDir, MAX_PATH);
                 size_t dirLen = strlen(gameDir);
                 while (dirLen > 0 && (gameDir[dirLen - 1] == '\\' || gameDir[dirLen - 1] == '/')) {
                     gameDir[--dirLen] = '\0';
@@ -1296,6 +1847,7 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) 
                     }
                 }
 
+                SaveConfigWin();
                 RunCommandInBackground(hwnd, fullArgs);
 
                 free(user);
@@ -1342,7 +1894,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
     HWND hwnd = CreateWindowExA(
         WS_EX_APPWINDOW, CLASS_NAME, "PortableMC",
         WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU | WS_MINIMIZEBOX,
-        CW_USEDEFAULT, CW_USEDEFAULT, 525, 455,
+        CW_USEDEFAULT, CW_USEDEFAULT, 525, 495,
         NULL, NULL, hInstance, NULL
     );
 
