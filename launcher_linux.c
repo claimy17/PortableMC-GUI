@@ -755,13 +755,14 @@ static void on_login_clicked(GtkWidget *w, gpointer data) {
     }
 
     gchar **argv = g_new0(gchar *, 7);
-    argv = "portablemc";
-    argv = "--main-dir";
-    argv = dir;
-    argv = "auth";
-    argv = "login";
-    argv = "--no-browser";
-    argv = NULL;
+    int idx = 0;
+    argv[idx++] = "portablemc";
+    argv[idx++] = "--main-dir";
+    argv[idx++] = dir;
+    argv[idx++] = "auth";
+    argv[idx++] = "login";
+    argv[idx++] = "--no-browser";
+    argv[idx++] = NULL;
 
     run_pmc_command(app, argv, FALSE);
     g_free(argv);
