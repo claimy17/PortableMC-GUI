@@ -301,10 +301,10 @@ int FetchMojangVersions(char outVersions[][64], int maxVersions, int includeSnap
             }
         }
 
-        BOOL keep = FALSE;
-        if (strcmp(tempType, "release") == 0) keep = TRUE;
-        else if (strcmp(tempType, "snapshot") == 0 && includeSnap) keep = TRUE;
-        else if ((strcmp(tempType, "old_beta") == 0 || strcmp(tempType, "old_alpha") == 0) && includeBeta) keep = TRUE;
+        int keep = 0;
+        if (strcmp(tempType, "release") == 0) keep = 1;
+        else if (strcmp(tempType, "snapshot") == 0 && includeSnap) keep = 1;
+        else if ((strcmp(tempType, "old_beta") == 0 || strcmp(tempType, "old_alpha") == 0) && includeBeta) keep = 1;
 
         if (keep && strlen(tempId) > 0) {
             strcpy(outVersions[count], tempId);
