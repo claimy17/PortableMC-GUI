@@ -1,0 +1,86 @@
+name: Build Linux and macOS
+
+on:
+  push:
+    branches: [ main ]
+  release:
+    types: [ published ]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build-linux:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install GTK3
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libgtk-3-dev
+
+      - name: Compile Linux Executable
+        run: |
+          gcc launcher_linux.c modrinth.c -o PortableMC-GUI-Linux `pkg-config --cflags --libs gtk+-3.0` -lm -Os -s
+          chmod +x PortableMC-GUI-Linux
+
+      - name: Upload Linux Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: PortableMC-GUI-Linux
+          path: PortableMC-GUI-Linux
+
+      - name: Attach to Release (if tag)
+        if: github.event_name == 'release'
+        uses: softprops/action-gh-release@v2
+        with:
+          files: PortableMC-GUI-Linux
+
+  build-macos:
+    runs-on: macos-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Compile macOS App Bundle
+        run: |
+          mkdir -p PortableMC-GUI.app/Contents/MacOS
+          mkdir -p PortableMC-GUI.app/Contents/Resources
+          cp icon.png PortableMC-GUI.app/Contents/Resources/icon.png || true
+          clang -fobjc-arc launcher_mac.m modrinth.c -framework Cocoa -o PortableMC-GUI.app/Contents/MacOS/PortableMC-GUI -Os
+          cat << 'EOF' > PortableMC-GUI.app/Contents/Info.plist
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://apple.com">
+          <plist version="1.0">
+          <dict>
+            <key>CFBundleExecutable</key>
+            <string>PortableMC-GUI</string>
+            <key>CFBundleIdentifier</key>
+            <string>com.claimy17.portablemc-gui</string>
+            <key>CFBundleName</key>
+            <string>PortableMC-GUI</string>
+            <key>CFBundleIconFile</key>
+            <string>icon.png</string>
+            <key>CFBundlePackageType</key>
+            <string>APPL</string>
+            <key>NSHighResolutionCapable</key>
+            <true/>
+          </dict>
+          </plist>
+          EOF
+          zip -r PortableMC-GUI-macOS.zip PortableMC-GUI.app
+
+      - name: Upload macOS Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: PortableMC-GUI-macOS
+          path: PortableMC-GUI-macOS.zip
+
+      - name: Attach to Release (if tag)
+        if: github.event_name == 'release'
+        uses: softprops/action-gh-release@v2
+        with:
+          files: PortableMC-GUI-macOS.zip
