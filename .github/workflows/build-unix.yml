@@ -22,22 +22,73 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y libgtk-3-dev
 
-      - name: Compile Linux Executable
+      - name: Compile and Package Linux Installer
         run: |
-          gcc launcher_linux.c modrinth.c -o PortableMC-GUI-Linux `pkg-config --cflags --libs gtk+-3.0` -lm -Os -s
-          chmod +x PortableMC-GUI-Linux
+          mkdir -p linux-pkg
+          gcc launcher_linux.c modrinth.c -o linux-pkg/PortableMC-GUI `pkg-config --cflags --libs gtk+-3.0` -lm -Os -s
+          chmod +x linux-pkg/PortableMC-GUI
+          cp icon.png linux-pkg/icon.png || true
+
+          cat << 'EOF' > linux-pkg/install.sh
+          #!/usr/bin/env bash
+          set -e
+          DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+          mkdir -p "$HOME/.local/bin" "$HOME/.local/share/icons/hicolor/256x256/apps" "$HOME/.local/share/applications"
+
+          cp "$DIR/PortableMC-GUI" "$HOME/.local/bin/PortableMC-GUI"
+          chmod +x "$HOME/.local/bin/PortableMC-GUI"
+
+          if [ -f "$DIR/icon.png" ]; then
+            cp "$DIR/icon.png" "$HOME/.local/share/icons/hicolor/256x256/apps/portablemc-gui.png"
+          fi
+
+          cat << 'DESKTOP' > "$HOME/.local/share/applications/portablemc-gui.desktop"
+          [Desktop Entry]
+          Name=PortableMC
+          Comment=Lightweight Native Minecraft Launcher
+          Exec=%h/.local/bin/PortableMC-GUI
+          Icon=portablemc-gui
+          Terminal=false
+          Type=Application
+          Categories=Game;
+          DESKTOP
+
+          chmod +x "$HOME/.local/share/applications/portablemc-gui.desktop"
+          update-desktop-database "$HOME/.local/share/applications" 2>/dev/null || true
+
+          if ! command -v portablemc >/dev/null 2>&1; then
+            echo "Installing portablemc CLI backend..."
+            pip3 install --user portablemc 2>/dev/null || pip install --user portablemc 2>/dev/null || echo "Note: Install 'portablemc' via pip if needed."
+          fi
+
+          echo "PortableMC installed! You can now launch it from your Applications menu or run 'PortableMC-GUI'."
+          EOF
+          chmod +x linux-pkg/install.sh
+
+          cat << 'EOF' > linux-pkg/uninstall.sh
+          #!/usr/bin/env bash
+          set -e
+          rm -f "$HOME/.local/bin/PortableMC-GUI"
+          rm -f "$HOME/.local/share/icons/hicolor/256x256/apps/portablemc-gui.png"
+          rm -f "$HOME/.local/share/applications/portablemc-gui.desktop"
+          update-desktop-database "$HOME/.local/share/applications" 2>/dev/null || true
+          echo "PortableMC has been completely uninstalled."
+          EOF
+          chmod +x linux-pkg/uninstall.sh
+
+          tar -czvf PortableMC-GUI-Linux.tar.gz -C linux-pkg .
 
       - name: Upload Linux Artifact
         uses: actions/upload-artifact@v4
         with:
           name: PortableMC-GUI-Linux
-          path: PortableMC-GUI-Linux
+          path: PortableMC-GUI-Linux.tar.gz
 
       - name: Attach to Release (if tag)
         if: github.event_name == 'release'
         uses: softprops/action-gh-release@v2
         with:
-          files: PortableMC-GUI-Linux
+          files: PortableMC-GUI-Linux.tar.gz
 
   build-macos:
     runs-on: macos-latest
