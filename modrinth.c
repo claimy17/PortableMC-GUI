@@ -263,3 +263,57 @@ int SearchModrinthProjects(const char* query, const char* loader, const char* mc
     free(jsonBuf);
     return found;
 }
+int FetchMojangVersions(char outVersions[][64], int maxVersions, int includeSnap, int includeBeta) {
+    char* url = (char*)calloc(512, 1);
+    char* jsonBuf = (char*)calloc(1048576, 1); // 1 MB per il manifest completo di Mojang
+    if (!url || !jsonBuf) { free(url); free(jsonBuf); return 0; }
+
+    sprintf(url, "https://piston-meta%cmojang%ccom/mc/game/version_manifest_v2.json", '.', '.');
+    size_t bytes = HttpGetToBuffer(url, jsonBuf, 1048576);
+    if (bytes < 100) {
+        free(url);
+        free(jsonBuf);
+        return 0;
+    }
+
+    int count = 0;
+    char* ptr = strstr(jsonBuf, "\"versions\"");
+    if (!ptr) ptr = jsonBuf;
+
+    while (count < maxVersions && (ptr = strstr(ptr, "\"id\":\"")) != NULL) {
+        ptr += 6;
+        char* endId = strchr(ptr, '"');
+        if (!endId) break;
+
+        size_t idLen = (size_t)(endId - ptr);
+        char tempId[64] = {0};
+        if (idLen < 64) {
+            strncpy(tempId, ptr, idLen);
+        }
+
+        char* typePtr = strstr(endId, "\"type\":\"");
+        char tempType[32] = {0};
+        if (typePtr && (typePtr - endId) < 100) {
+            typePtr += 8;
+            char* endType = strchr(typePtr, '"');
+            if (endType && (endType - typePtr) < 32) {
+                strncpy(tempType, typePtr, (size_t)(endType - typePtr));
+            }
+        }
+
+        BOOL keep = FALSE;
+        if (strcmp(tempType, "release") == 0) keep = TRUE;
+        else if (strcmp(tempType, "snapshot") == 0 && includeSnap) keep = TRUE;
+        else if ((strcmp(tempType, "old_beta") == 0 || strcmp(tempType, "old_alpha") == 0) && includeBeta) keep = TRUE;
+
+        if (keep && strlen(tempId) > 0) {
+            strcpy(outVersions[count], tempId);
+            count++;
+        }
+        ptr = endId;
+    }
+
+    free(url);
+    free(jsonBuf);
+    return count;
+}

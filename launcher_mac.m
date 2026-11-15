@@ -538,15 +538,36 @@ static void mkdir_p_mac(const char *path) {
 }
 
 - (void)populateVersions {
-    BOOL showSnap = ([self.chkSnap state] == NSControlStateValueOn);
-    BOOL showBeta = ([self.chkBeta state] == NSControlStateValueOn);
+    int showSnap = ([self.chkSnap state] == NSControlStateValueOn) ? 1 : 0;
+    int showBeta = ([self.chkBeta state] == NSControlStateValueOn) ? 1 : 0;
+
+    NSString *prevSelection = [self.popupVersion titleOfSelectedItem];
     [self.popupVersion removeAllItems];
 
-    for (int i = 0; ALL_VERSIONS[i] != NULL; i++) {
-        const char *v = ALL_VERSIONS[i];
-        if (is_snapshot_ver(v) && !showSnap) continue;
-        if (is_beta_ver(v) && !showBeta) continue;
-        [self.popupVersion addItemWithTitle:[NSString stringWithUTF8String:v]];
+    char (*dynVersions)[64] = calloc(512, sizeof(*dynVersions));
+    int fetched = 0;
+    if (dynVersions) {
+        fetched = FetchMojangVersions(dynVersions, 512, showSnap, showBeta);
+    }
+
+    if (fetched > 0) {
+        for (int i = 0; i < fetched; i++) {
+            [self.popupVersion addItemWithTitle:[NSString stringWithUTF8String:dynVersions[i]]];
+        }
+    } else {
+        /* Fallback offline se non c'è connessione */
+        for (int i = 0; ALL_VERSIONS[i] != NULL; i++) {
+            const char *v = ALL_VERSIONS[i];
+            if (is_snapshot_ver(v) && !showSnap) continue;
+            if (is_beta_ver(v) && !showBeta) continue;
+            [self.popupVersion addItemWithTitle:[NSString stringWithUTF8String:v]];
+        }
+    }
+
+    if (dynVersions) free(dynVersions);
+
+    if (prevSelection && [self.popupVersion itemWithTitle:prevSelection]) {
+        [self.popupVersion selectItemWithTitle:prevSelection];
     }
 }
 

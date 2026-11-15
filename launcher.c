@@ -154,19 +154,28 @@ COLORREF GetBorderColor()      { return isDarkTheme ? RGB(72, 72, 76)   : RGB(20
 COLORREF GetArrowColor()       { return isDarkTheme ? RGB(85, 85, 90)   : RGB(110, 110, 115); }
 
 void RebuildVersionList() {
+    int fetched = FetchMojangVersions(activeVersions, 256, showSnapshots, showBetas);
+    if (fetched > 0) {
+        activeVersionCount = fetched;
+        // Se la versione selezionata non è nella nuova lista, imposta la più recente
+        BOOL found = FALSE;
+        for (int i = 0; i < activeVersionCount; i++) {
+            if (strcmp(activeVersions[i], selectedVersion) == 0) {
+                found = TRUE;
+                break;
+            }
+        }
+        if (!found) {
+            strcpy(selectedVersion, activeVersions[0]);
+            if (hBtnVersion) SetWindowTextA(hBtnVersion, selectedVersion);
+        }
+        return;
+    }
+
+    // Fallback offline se non c'è connessione internet
     activeVersionCount = 0;
     for (size_t i = 0; i < COUNT_RELEASE && activeVersionCount < 256; i++) {
         strcpy(activeVersions[activeVersionCount++], VERSIONS_RELEASE[i]);
-    }
-    if (showSnapshots) {
-        for (size_t i = 0; i < COUNT_SNAPSHOT && activeVersionCount < 256; i++) {
-            strcpy(activeVersions[activeVersionCount++], VERSIONS_SNAPSHOT[i]);
-        }
-    }
-    if (showBetas) {
-        for (size_t i = 0; i < COUNT_BETA && activeVersionCount < 256; i++) {
-            strcpy(activeVersions[activeVersionCount++], VERSIONS_BETA[i]);
-        }
     }
 }
 

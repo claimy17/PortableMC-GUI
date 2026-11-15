@@ -273,17 +273,47 @@ static void show_apple_alert(AppData *app, const char *title, const char *msg, c
     }
 }
 static void populate_versions(AppData *app) {
-    gboolean show_snap = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(app->chk_snap));
-    gboolean show_beta = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(app->chk_beta));
+    int show_snap = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(app->chk_snap)) ? 1 : 0;
+    int show_beta = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(app->chk_beta)) ? 1 : 0;
 
+    gchar *prev_sel = gtk_combo_box_text_get_active_text(GTK_COMBO_BOX_TEXT(app->combo_version));
     gtk_combo_box_text_remove_all(GTK_COMBO_BOX_TEXT(app->combo_version));
-    for (int i = 0; ALL_VERSIONS[i] != NULL; i++) {
-        const char *v = ALL_VERSIONS[i];
-        if (is_snapshot_ver(v) && !show_snap) continue;
-        if (is_beta_ver(v) && !show_beta) continue;
-        gtk_combo_box_text_append_text(GTK_COMBO_BOX_TEXT(app->combo_version), v);
+
+    char (*dyn_versions)[64] = calloc(512, sizeof(*dyn_versions));
+    int fetched = 0;
+    if (dyn_versions) {
+        fetched = FetchMojangVersions(dyn_versions, 512, show_snap, show_beta);
     }
-    gtk_combo_box_set_active(GTK_COMBO_BOX(app->combo_version), 0);
+
+    int active_idx = 0;
+    int count = 0;
+
+    if (fetched > 0) {
+        for (int i = 0; i < fetched; i++) {
+            gtk_combo_box_text_append_text(GTK_COMBO_BOX_TEXT(app->combo_version), dyn_versions[i]);
+            if (prev_sel && strcmp(dyn_versions[i], prev_sel) == 0) {
+                active_idx = count;
+            }
+            count++;
+        }
+    } else {
+        /* Fallback offline se il PC non è connesso */
+        for (int i = 0; ALL_VERSIONS[i] != NULL; i++) {
+            const char *v = ALL_VERSIONS[i];
+            if (is_snapshot_ver(v) && !show_snap) continue;
+            if (is_beta_ver(v) && !show_beta) continue;
+            gtk_combo_box_text_append_text(GTK_COMBO_BOX_TEXT(app->combo_version), v);
+            if (prev_sel && strcmp(v, prev_sel) == 0) {
+                active_idx = count;
+            }
+            count++;
+        }
+    }
+
+    if (dyn_versions) free(dyn_versions);
+    if (prev_sel) g_free(prev_sel);
+
+    gtk_combo_box_set_active(GTK_COMBO_BOX(app->combo_version), active_idx);
 }
 
 static void on_theme_clicked(GtkWidget *w, gpointer data) {
