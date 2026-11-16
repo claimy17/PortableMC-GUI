@@ -21,6 +21,7 @@ A fast, lightweight, native graphical user interface built in pure **C / Objecti
 - **Automatic Offline Skin & Cape Setup**: Importing a `.png` skin or cape automatically checks for `CustomSkinLoader` and downloads the right version from Modrinth if missing.
 - **Persistent Configuration**: Automatically saves your theme, username, mod loader, game directory, and preferences across sessions.
 - **Dual Authentication & Full Version List**: Offline username or Microsoft device-code login (`https://microsoft.com`), supporting Vanilla, Fabric, Forge, NeoForge, and Quilt (`rd-132211` up to `26.3` / `26.4-rc1`).
+- **Auto-Update of Version list**: every time minecrft releases new minecraft version it be automatic loaded on the code.
 
 ---
 
