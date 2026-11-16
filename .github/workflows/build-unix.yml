@@ -1,4 +1,4 @@
-name: Build Linux and macOS
+name: Build Linux and macOS and Windows
 
 on:
   push:
@@ -32,7 +32,7 @@ jobs:
           cat << 'EOF' > linux-pkg/install.sh
           #!/usr/bin/env bash
           set -e
-          DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+          DIR="$(cd "$(dirname "${BASH_SOURCE}")" && pwd)"
           mkdir -p "$HOME/.local/bin" "$HOME/.local/share/icons/hicolor/256x256/apps" "$HOME/.local/share/applications"
 
           cp "$DIR/PortableMC-GUI" "$HOME/.local/bin/PortableMC-GUI"
@@ -77,6 +77,7 @@ jobs:
           chmod +x linux-pkg/uninstall.sh
 
           tar -czvf PortableMC-GUI-Linux.tar.gz -C linux-pkg .
+          sha256sum PortableMC-GUI-Linux.tar.gz > PortableMC-GUI-Linux.tar.gz.sha256
 
       - name: Upload Linux Artifact
         uses: actions/upload-artifact@v4
@@ -88,7 +89,9 @@ jobs:
         if: github.event_name == 'release'
         uses: softprops/action-gh-release@v2
         with:
-          files: PortableMC-GUI-Linux.tar.gz
+          files: |
+            PortableMC-GUI-Linux.tar.gz
+            PortableMC-GUI-Linux.tar.gz.sha256
 
   build-macos:
     runs-on: macos-latest
@@ -124,7 +127,9 @@ jobs:
           </dict>
           </plist>
           EOF
+          codesign --force --deep --sign - PortableMC-GUI.app
           zip -r PortableMC-GUI-macOS.zip PortableMC-GUI.app
+          shasum -a 256 PortableMC-GUI-macOS.zip > PortableMC-GUI-macOS.zip.sha256
 
       - name: Upload macOS Artifact
         uses: actions/upload-artifact@v4
@@ -136,4 +141,56 @@ jobs:
         if: github.event_name == 'release'
         uses: softprops/action-gh-release@v2
         with:
-          files: PortableMC-GUI-macOS.zip
+          files: |
+            PortableMC-GUI-macOS.zip
+            PortableMC-GUI-macOS.zip.sha256
+
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Generate Resources and Compile Windows EXE
+        shell: cmd
+        run: |
+          (
+          echo 1 ICON "icon.ico"
+          echo 1 VERSIONINFO
+          echo FILEVERSION 1,0,0,0
+          echo PRODUCTVERSION 1,0,0,0
+          echo BEGIN
+          echo   BLOCK "StringFileInfo"
+          echo   BEGIN
+          echo     BLOCK "040904b0"
+          echo     BEGIN
+          echo       VALUE "CompanyName", "Seby17S"
+          echo       VALUE "FileDescription", "PortableMC Lightweight GUI"
+          echo       VALUE "FileVersion", "1.0.0.0"
+          echo       VALUE "OriginalFilename", "PortableMC-GUI.exe"
+          echo       VALUE "ProductName", "PortableMC GUI"
+          echo     END
+          echo   END
+          echo   BLOCK "VarFileInfo"
+          echo   BEGIN
+          echo     VALUE "Translation", 0x409, 1200
+          echo   END
+          echo END
+          ) > app.rc
+          windres app.rc -O coff -o app.res
+          gcc launcher.c modrinth.c app.res -o PortableMC-GUI.exe -mwindows -lcomctl32 -lshell32 -lgdi32 -lmsimg32 -ldwmapi -luxtheme -lole32 -lwininet -Os -s
+          certutil -hashfile PortableMC-GUI.exe SHA256 > PortableMC-GUI.exe.sha256
+
+      - name: Upload Windows Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: PortableMC-GUI-Windows
+          path: PortableMC-GUI.exe
+
+      - name: Attach to Release (if tag)
+        if: github.event_name == 'release'
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            PortableMC-GUI.exe
+            PortableMC-GUI.exe.sha256
