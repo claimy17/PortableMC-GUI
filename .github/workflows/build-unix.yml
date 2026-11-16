@@ -32,7 +32,7 @@ jobs:
           cat << 'EOF' > linux-pkg/install.sh
           #!/usr/bin/env bash
           set -e
-          DIR="$(cd "$(dirname "${BASH_SOURCE}")" && pwd)"
+          DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
           mkdir -p "$HOME/.local/bin" "$HOME/.local/share/icons/hicolor/256x256/apps" "$HOME/.local/share/applications"
 
           cp "$DIR/PortableMC-GUI" "$HOME/.local/bin/PortableMC-GUI"
@@ -178,7 +178,7 @@ jobs:
           echo END
           ) > app.rc
           windres app.rc -O coff -o app.res
-          gcc launcher.c modrinth.c app.res -o PortableMC-GUI.exe -mwindows -lcomctl32 -lshell32 -lgdi32 -lmsimg32 -ldwmapi -luxtheme -lole32 -lwininet -Os -s
+          gcc -Wall launcher.c modrinth.c app.res -o PortableMC-GUI.exe -mwindows -static -static-libgcc -lcomctl32 -lshell32 -lgdi32 -lmsimg32 -ldwmapi -luxtheme -lole32 -lwininet -Os -s
           certutil -hashfile PortableMC-GUI.exe SHA256 > PortableMC-GUI.exe.sha256
 
       - name: Upload Windows Artifact
