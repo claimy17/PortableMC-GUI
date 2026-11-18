@@ -280,8 +280,12 @@ int FetchMojangVersions(char outVersions[][64], int maxVersions, int includeSnap
     char* ptr = strstr(jsonBuf, "\"versions\"");
     if (!ptr) ptr = jsonBuf;
 
-    while (count < maxVersions && (ptr = strstr(ptr, "\"id\":\"")) != NULL) {
-        ptr += 6;
+    while (count < maxVersions && (ptr = strstr(ptr, "\"id\"")) != NULL) {
+        ptr += 4;
+        while (*ptr == ' ' || *ptr == ':') ptr++;
+        if (*ptr != '"') continue;
+        ptr++;
+
         char* endId = strchr(ptr, '"');
         if (!endId) break;
 
@@ -291,13 +295,17 @@ int FetchMojangVersions(char outVersions[][64], int maxVersions, int includeSnap
             strncpy(tempId, ptr, idLen);
         }
 
-        char* typePtr = strstr(endId, "\"type\":\"");
+        char* typePtr = strstr(endId, "\"type\"");
         char tempType[32] = {0};
         if (typePtr && (typePtr - endId) < 100) {
-            typePtr += 8;
-            char* endType = strchr(typePtr, '"');
-            if (endType && (endType - typePtr) < 32) {
-                strncpy(tempType, typePtr, (size_t)(endType - typePtr));
+            typePtr += 6;
+            while (*typePtr == ' ' || *typePtr == ':') typePtr++;
+            if (*typePtr == '"') {
+                typePtr++;
+                char* endType = strchr(typePtr, '"');
+                if (endType && (endType - typePtr) < 32) {
+                    strncpy(tempType, typePtr, (size_t)(endType - typePtr));
+                }
             }
         }
 

@@ -282,10 +282,10 @@ static void populate_versions(AppData *app) {
     gchar *prev_sel = gtk_combo_box_text_get_active_text(GTK_COMBO_BOX_TEXT(app->combo_version));
     gtk_combo_box_text_remove_all(GTK_COMBO_BOX_TEXT(app->combo_version));
 
-    char (*dyn_versions)[64] = calloc(512, sizeof(*dyn_versions));
+    char (*dyn_versions)[64] = calloc(1024, sizeof(*dyn_versions));
     int fetched = 0;
     if (dyn_versions) {
-        fetched = FetchMojangVersions(dyn_versions, 512, show_snap, show_beta);
+        fetched = FetchMojangVersions(dyn_versions, 1024, show_snap, show_beta);
     }
 
     int active_idx = 0;

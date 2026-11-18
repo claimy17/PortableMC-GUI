@@ -132,7 +132,7 @@ const char* VERSIONS_BETA[] = {
 #define COUNT_SNAPSHOT (sizeof(VERSIONS_SNAPSHOT) / sizeof(VERSIONS_SNAPSHOT[0]))
 #define COUNT_BETA     (sizeof(VERSIONS_BETA) / sizeof(VERSIONS_BETA[0]))
 
-char activeVersions[256][64];
+char activeVersions[1024][64];
 int activeVersionCount = 0;
 
 typedef struct {
@@ -154,10 +154,9 @@ COLORREF GetBorderColor()      { return isDarkTheme ? RGB(72, 72, 76)   : RGB(20
 COLORREF GetArrowColor()       { return isDarkTheme ? RGB(85, 85, 90)   : RGB(110, 110, 115); }
 
 void RebuildVersionList() {
-    int fetched = FetchMojangVersions(activeVersions, 256, showSnapshots, showBetas);
+    int fetched = FetchMojangVersions(activeVersions, 1024, showSnapshots, showBetas);
     if (fetched > 0) {
         activeVersionCount = fetched;
-        // Se la versione selezionata non è nella nuova lista, imposta la più recente
         BOOL found = FALSE;
         for (int i = 0; i < activeVersionCount; i++) {
             if (strcmp(activeVersions[i], selectedVersion) == 0) {
@@ -172,10 +171,19 @@ void RebuildVersionList() {
         return;
     }
 
-    // Fallback offline se non c'è connessione internet
     activeVersionCount = 0;
-    for (size_t i = 0; i < COUNT_RELEASE && activeVersionCount < 256; i++) {
+    for (size_t i = 0; i < COUNT_RELEASE && activeVersionCount < 1024; i++) {
         strcpy(activeVersions[activeVersionCount++], VERSIONS_RELEASE[i]);
+    }
+    if (showSnapshots) {
+        for (size_t i = 0; i < COUNT_SNAPSHOT && activeVersionCount < 1024; i++) {
+            strcpy(activeVersions[activeVersionCount++], VERSIONS_SNAPSHOT[i]);
+        }
+    }
+    if (showBetas) {
+        for (size_t i = 0; i < COUNT_BETA && activeVersionCount < 1024; i++) {
+            strcpy(activeVersions[activeVersionCount++], VERSIONS_BETA[i]);
+        }
     }
 }
 
@@ -560,7 +568,7 @@ void RunSearchMods(HWND hwnd) {
 
 void ImportModJar(HWND hwnd) {
     char* baseDir = (char*)calloc(MAX_PATH, 1);
-    GetWindowTextA(hEditDir, baseDir, MAX_PATH);
+    GetWindowTextA(baseDir, MAX_PATH);
     if (strlen(baseDir) == 0) {
         MessageBoxA(hwnd, "Please select a destination game folder first.", "Warning", MB_ICONWARNING);
         free(baseDir);

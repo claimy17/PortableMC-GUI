@@ -547,10 +547,10 @@ static void mkdir_p_mac(const char *path) {
     NSString *prevSelection = [self.popupVersion titleOfSelectedItem];
     [self.popupVersion removeAllItems];
 
-    char (*dynVersions)[64] = calloc(512, sizeof(*dynVersions));
+    char (*dynVersions)[64] = calloc(1024, sizeof(*dynVersions));
     int fetched = 0;
     if (dynVersions) {
-        fetched = FetchMojangVersions(dynVersions, 512, showSnap, showBeta);
+        fetched = FetchMojangVersions(dynVersions, 1024, showSnap, showBeta);
     }
 
     if (fetched > 0) {
