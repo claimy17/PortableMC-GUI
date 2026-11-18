@@ -223,7 +223,7 @@
     <section class="hero">
       <div class="badge"><span class="dot"></span> v1.3.3 Available — Native C &amp; Objective-C</div>
       <div style="margin-bottom: 12px;">
-        <canvas id="grassCube" width="120" height="120" style="cursor: pointer;"></canvas>
+        <canvas id="grassCube" width="180" height="180" style="cursor: pointer;"></canvas>
       </div>
       <h1>Minecraft, launched at native speed.</h1>
       <p class="subtitle">
@@ -319,7 +319,7 @@
       particles.length = 0;
       for (let i = 0; i < count; i++) {
         const baseAngle = (i / count) * Math.PI * 2;
-        const maxOrbit = 30 + (i % 4) * 7;
+        const maxOrbit = 52 + (i % 4) * 10;
         const targetDist = (i % 5) * 4.5;
         const targetAngle = baseAngle + 0.5;
         particles.push({
