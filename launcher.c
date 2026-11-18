@@ -568,7 +568,7 @@ void RunSearchMods(HWND hwnd) {
 
 void ImportModJar(HWND hwnd) {
     char* baseDir = (char*)calloc(MAX_PATH, 1);
-    GetWindowTextA(baseDir, MAX_PATH);
+    GetWindowTextA(hEditDir, baseDir, MAX_PATH);
     if (strlen(baseDir) == 0) {
         MessageBoxA(hwnd, "Please select a destination game folder first.", "Warning", MB_ICONWARNING);
         free(baseDir);
