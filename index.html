@@ -154,32 +154,6 @@
     .stat-card { text-align: center; }
     .stat-val { font-size: 26px; font-weight: 700; letter-spacing: -0.02em; }
     .stat-lbl { font-size: 13px; color: var(--muted); margin-top: 4px; }
-    .showcase {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-      gap: 20px;
-      margin-bottom: 48px;
-    }
-    .shot {
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: 18px;
-      padding: 12px;
-      box-shadow: var(--shadow);
-      text-align: center;
-    }
-    .shot img {
-      width: 100%;
-      height: auto;
-      border-radius: 12px;
-      display: block;
-    }
-    .shot span {
-      display: block;
-      font-size: 13px;
-      color: var(--muted);
-      margin-top: 10px;
-    }
     .grid {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
@@ -198,12 +172,29 @@
       gap: 16px;
     }
     .os-item {
-      padding: 16px;
+      padding: 18px;
       border-radius: 14px;
       border: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      gap: 14px;
     }
-    .os-item strong { display: block; font-size: 15px; margin-bottom: 4px; }
-    .os-item span { font-size: 13px; color: var(--muted); }
+    .os-item strong { display: block; font-size: 16px; margin-bottom: 6px; }
+    .os-item span { font-size: 13px; color: var(--muted); display: block; }
+    .btn-dl {
+      display: inline-block;
+      text-align: center;
+      background: var(--accent);
+      color: #fff;
+      padding: 9px 14px;
+      border-radius: 10px;
+      font-size: 13px;
+      font-weight: 600;
+      text-decoration: none;
+      transition: background 0.2s;
+    }
+    .btn-dl:hover { background: var(--accent-hover); }
     footer {
       text-align: center;
       padding: 28px 24px;
@@ -223,7 +214,7 @@
       </a>
       <div class="nav-actions">
         <button class="btn-ghost" id="themeBtn" type="button">Theme</button>
-        <a class="btn-ghost" href="https://github.com" target="_blank" rel="noopener">GitHub</a>
+        <a class="btn-ghost" href="https://github.com/claimy17/PortableMC-GUI" target="_blank" rel="noopener">GitHub</a>
       </div>
     </div>
   </header>
@@ -239,8 +230,8 @@
         A zero-bloat, cross-platform desktop frontend for <strong>PortableMC</strong> built in pure C and Objective-C. No Electron, no JVM overhead—just instant startup.
       </p>
       <div class="cta-row">
-        <a class="btn-primary" href="https://github.com/releases/latest" target="_blank" rel="noopener">Download Latest Release</a>
-        <a class="btn-secondary" href="https://github.com" target="_blank" rel="noopener">View Source Code</a>
+        <a class="btn-primary" href="https://github.com" target="_blank" rel="noopener">Download Latest Release</a>
+        <a class="btn-secondary" href="https://github.com/claimy17/PortableMC-GUI" target="_blank" rel="noopener">View Source Code</a>
       </div>
     </section>
 
@@ -249,17 +240,6 @@
       <div class="stat-card"><div class="stat-val">0 MB</div><div class="stat-lbl">RAM Used In-Game (Auto-Close)</div></div>
       <div class="stat-card"><div class="stat-val">3 OS</div><div class="stat-lbl">Windows, macOS &amp; Linux</div></div>
       <div class="stat-card"><div class="stat-val">1-Click</div><div class="stat-lbl">Boost FPS &amp; Modrinth</div></div>
-    </section>
-
-    <section class="showcase">
-      <div class="shot">
-        <img src="https://github.com" alt="PortableMC-GUI Light Theme Preview" />
-        <span>Native Light Theme &amp; Quick Launch Controls</span>
-      </div>
-      <div class="shot">
-        <img src="https://github.com" alt="PortableMC-GUI Dark Theme Preview" />
-        <span>Native Dark Theme &amp; Integrated Modrinth Catalog</span>
-      </div>
     </section>
 
     <section class="grid">
@@ -282,6 +262,7 @@
       <div class="card">
         <h3>Offline Skins &amp; Capes</h3>
         <p>One-click local skin and cape setup powered by automatic CustomSkinLoader integration.</p>
+      </div>
       <div class="card">
         <h3>Zero Background Overhead</h3>
         <p>Enable Auto-Close mode to terminate the launcher the moment Minecraft starts, freeing 100% of system memory.</p>
@@ -290,16 +271,25 @@
 
     <section class="os-box">
       <div class="os-item">
-        <strong>Windows (Win32 C)</strong>
-        <span>~300 KB standalone portable .exe with native GDI rendering and zero external DLLs.</span>
+        <div>
+          <strong>Windows (Win32 C)</strong>
+          <span>~300 KB standalone portable .exe and installer with native GDI rendering and zero external DLLs.</span>
+        </div>
+        <a class="btn-dl" href="https://github.com/claimy17/PortableMC-GUI/releases/download/v.1.3.3/PortableMC-Setup-v1.3.3.exe">Download for Windows (.exe)</a>
       </div>
       <div class="os-item">
-        <strong>macOS 11+ (Cocoa Obj-C)</strong>
-        <span>Native Universal Binary (Apple Silicon &amp; Intel) built directly against AppKit.</span>
+        <div>
+          <strong>macOS 11+ (Cocoa Obj-C)</strong>
+          <span>Native Universal Binary (Apple Silicon &amp; Intel) built directly against AppKit.</span>
+        </div>
+        <a class="btn-dl" href="https://github.com">Download for macOS (.zip)</a>
       </div>
       <div class="os-item">
-        <strong>Linux (GTK3 + Cairo C)</strong>
-        <span>Lightweight native GTK3 interface compiled cleanly with GCC and libcurl.</span>
+        <div>
+          <strong>Linux (GTK3 + Cairo C)</strong>
+          <span>Lightweight native GTK3 interface compiled cleanly with GCC and libcurl.</span>
+        </div>
+        <a class="btn-dl" href="https://github.com">Download for Linux (.tar.gz)</a>
       </div>
     </section>
   </main>
@@ -325,74 +315,64 @@
     canvas.addEventListener('mouseenter', () => { hovered = true; });
     canvas.addEventListener('mouseleave', () => { hovered = false; });
 
-    const verts = [
-      [-1, -1, -1],
-      [ 1, -1, -1],
-      [ 1,  1, -1],
-      [-1,  1, -1],
-      [-1, -1,  1],
-      [ 1, -1,  1],
-      [ 1,  1,  1],
-      [-1,  1,  1]
-    ];
+    const vx = new Float32Array([-1,  1,  1, -1, -1,  1,  1, -1]);
+    const vy = new Float32Array([-1, -1,  1,  1, -1, -1,  1,  1]);
+    const vz = new Float32Array([-1, -1, -1, -1,  1,  1,  1,  1]);
 
     const faces = [
-      { idx:, color: '#785032', grassSide: true },
-      { idx:, color: '#785032', grassSide: true },
-      { idx:, color: '#644128', grassSide: true },
-      { idx:, color: '#644128', grassSide: true },
-      { idx:, color: '#46a032', grassSide: false },
-      { idx:, color: '#50321e', grassSide: false }
+      { a: 4, b: 5, c: 6, d: 7, color: '#785032', grass: true },
+      { a: 1, b: 0, c: 3, d: 2, color: '#785032', grass: true },
+      { a: 5, b: 1, c: 2, d: 6, color: '#644128', grass: true },
+      { a: 0, b: 4, c: 7, d: 3, color: '#644128', grass: true },
+      { a: 0, b: 1, c: 5, d: 4, color: '#46a032', grass: false },
+      { a: 7, b: 6, c: 2, d: 3, color: '#50321e', grass: false }
     ];
-
-    function project(v) {
-      const x = v[0], y = v[1], z = v[2];
-      const cx = Math.cos(rotY), sx = Math.sin(rotY);
-      const x1 = x * cx + z * sx;
-      const z1 = -x * sx + z * cx;
-      const cy = Math.cos(rotX), sy = Math.sin(rotX);
-      const y2 = y * cy - z1 * sy;
-      const z2 = y * sy + z1 * cy;
-      const scale = 34;
-      return {
-        x: canvas.width / 2 + x1 * scale,
-        y: canvas.height / 2 + y2 * scale,
-        z: z2
-      };
-    }
 
     function drawCube() {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
-      const proj = verts.map(project);
+      const px = new Float32Array(8);
+      const py = new Float32Array(8);
+      const pz = new Float32Array(8);
 
-      const sorted = faces.map(f => {
-        const avgZ = (proj[f.idx[0]].z + proj[f.idx[1]].z + proj[f.idx[2]].z + proj[f.idx[3]].z) / 4;
-        return { idx: f.idx, color: f.color, grassSide: f.grassSide, avgZ: avgZ };
-      }).sort((a, b) => a.avgZ - b.avgZ);
+      const cy = Math.cos(rotY), sy = Math.sin(rotY);
+      const cx = Math.cos(rotX), sx = Math.sin(rotX);
 
-      for (const f of sorted) {
-        const p0 = proj[f.idx[0]];
-        const p1 = proj[f.idx[1]];
-        const p2 = proj[f.idx[2]];
-        const p3 = proj[f.idx[3]];
+      for (let i = 0; i < 8; i++) {
+        const x1 = vx[i] * cy + vz[i] * sy;
+        const z1 = -vx[i] * sy + vz[i] * cy;
+        const y2 = vy[i] * cx - z1 * sx;
+        const z2 = vy[i] * sx + z1 * cx;
+        px[i] = 60 + x1 * 34;
+        py[i] = 60 + y2 * 34;
+        pz[i] = z2;
+      }
 
+      const list = faces.map(f => ({
+        f: f,
+        z: (pz[f.a] + pz[f.b] + pz[f.c] + pz[f.d]) * 0.25
+      })).sort((u, v) => u.z - v.z);
+
+      for (let k = 0; k < list.length; k++) {
+        const f = list[k].f;
         ctx.beginPath();
-        ctx.moveTo(p0.x, p0.y);
-        ctx.lineTo(p1.x, p1.y);
-        ctx.lineTo(p2.x, p2.y);
-        ctx.lineTo(p3.x, p3.y);
+        ctx.moveTo(px[f.a], py[f.a]);
+        ctx.lineTo(px[f.b], py[f.b]);
+        ctx.lineTo(px[f.c], py[f.c]);
+        ctx.lineTo(px[f.d], py[f.d]);
         ctx.closePath();
         ctx.fillStyle = f.color;
         ctx.fill();
 
-        if (f.grassSide) {
-          const g2 = { x: p1.x + (p2.x - p1.x) * 0.28, y: p1.y + (p2.y - p1.y) * 0.28 };
-          const g3 = { x: p0.x + (p3.x - p0.x) * 0.28, y: p0.y + (p3.y - p0.y) * 0.28 };
+        if (f.grass) {
+          const gx2 = px[f.b] + (px[f.c] - px[f.b]) * 0.28;
+          const gy2 = py[f.b] + (py[f.c] - py[f.b]) * 0.28;
+          const gx3 = px[f.a] + (px[f.d] - px[f.a]) * 0.28;
+          const gy3 = py[f.a] + (py[f.d] - py[f.a]) * 0.28;
           ctx.beginPath();
-          ctx.moveTo(p0.x, p0.y);
-          ctx.lineTo(p1.x, p1.y);
-          ctx.lineTo(g2.x, g2.y);
-          ctx.lineTo(g3.x, g3.y);
+          ctx.moveTo(px[f.a], py[f.a]);
+          ctx.lineTo(px[f.b], py[f.b]);
+          ctx.lineTo(gx2, gy2);
+          ctx.lineTo(gx3, gy3);
           ctx.closePath();
           ctx.fillStyle = '#46a032';
           ctx.fill();
