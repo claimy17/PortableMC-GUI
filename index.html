@@ -313,32 +313,29 @@
     const r = 42;
 
     const particles = [];
-    const count = 28;
+    const count = 26;
 
     function initParticles() {
       particles.length = 0;
       for (let i = 0; i < count; i++) {
-        const angle = (i / count) * Math.PI * 2 + Math.random() * 0.4;
-        const dist = 36 + Math.random() * 22;
-        const targetAngle = (i / count) * Math.PI * 2;
-        const targetDist = Math.random() * (r * 0.72);
+        const baseAngle = (i / count) * Math.PI * 2;
+        const maxOrbit = 30 + (i % 4) * 7;
+        const targetDist = (i % 5) * 4.5;
+        const targetAngle = baseAngle + 0.5;
         particles.push({
-          sx: cx + Math.cos(angle) * dist,
-          sy: cy + Math.sin(angle) * dist,
+          baseAngle: baseAngle,
+          maxOrbit: maxOrbit,
+          spinSpeed: 2.6 + (i % 3) * 0.45,
           tx: cx + Math.cos(targetAngle) * targetDist,
           ty: cy + Math.sin(targetAngle) * targetDist,
           color: i % 2 === 0 ? '#34d399' : '#22d3ee',
-          size: 2.3 + Math.random() * 1.4
+          size: 2.4 + (i % 3) * 0.5
         });
       }
     }
 
     let startTime = null;
-    const duration = 1500;
-
-    function easeOutCubic(t) {
-      return 1 - Math.pow(1 - t, 3);
-    }
+    const duration = 2100;
 
     function drawHexCube(alpha) {
       ctx.save();
@@ -395,18 +392,28 @@
       if (!startTime) startTime = ts;
       const elapsed = ts - startTime;
       const raw = Math.min(elapsed / duration, 1);
-      const t = easeOutCubic(raw);
 
       ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-      if (raw < 0.85) {
-        const pAlpha = raw > 0.6 ? 1 - (raw - 0.6) / 0.25 : 1;
+      if (raw < 0.88) {
+        const orbitEnvelope = Math.sin(Math.min(raw / 0.82, 1) * Math.PI);
+        const pAlpha = raw > 0.65 ? Math.max(0, 1 - (raw - 0.65) / 0.23) : 1;
+        const mergeT = raw > 0.55 ? (raw - 0.55) / 0.33 : 0;
+
         ctx.save();
-        ctx.globalAlpha = Math.max(0, pAlpha);
+        ctx.globalAlpha = pAlpha;
+
         for (let i = 0; i < particles.length; i++) {
           const p = particles[i];
-          const x = p.sx + (p.tx - p.sx) * t;
-          const y = p.sy + (p.ty - p.sy) * t;
+          const angle = p.baseAngle + raw * p.spinSpeed;
+          const dist = p.maxOrbit * orbitEnvelope;
+
+          const ox = cx + Math.cos(angle) * dist;
+          const oy = cy + Math.sin(angle) * dist;
+
+          const x = ox + (p.tx - ox) * mergeT;
+          const y = oy + (p.ty - oy) * mergeT;
+
           ctx.beginPath();
           ctx.arc(x, y, p.size, 0, Math.PI * 2);
           ctx.fillStyle = p.color;
@@ -415,8 +422,8 @@
         ctx.restore();
       }
 
-      if (raw > 0.5) {
-        const cubeAlpha = Math.min((raw - 0.5) / 0.45, 1);
+      if (raw > 0.62) {
+        const cubeAlpha = Math.min((raw - 0.62) / 0.35, 1);
         drawHexCube(cubeAlpha);
       }
 
