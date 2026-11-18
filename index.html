@@ -6,7 +6,7 @@
   <title>PortableMC-GUI — Ultra-Lightweight Native Minecraft Launcher</title>
   <meta name="description" content="PortableMC-GUI is a fast, native desktop GUI wrapper for PortableMC written in pure C and Objective-C (~300 KB, 0 MB RAM in-game) for Windows, macOS, and Linux." />
   <meta name="keywords" content="PortableMC, PortableMC-GUI, Minecraft launcher, lightweight launcher, C, Win32, GTK3, Cocoa, Modrinth, Fabric" />
-  <link rel="canonical" href="https://is-a.dev" />
+  <link rel="icon" type="image/png" href="icon.png" />
   <style>
     :root {
       --bg: #f5f5f7;
@@ -87,8 +87,8 @@
       text-decoration: none;
     }
     .btn-ghost:hover { border-color: var(--accent); }
-    main { max-width: 980px; margin: 0 auto; padding: 64px 24px 80px; }
-    .hero { text-align: center; max-width: 680px; margin: 0 auto 64px; }
+    main { max-width: 980px; margin: 0 auto; padding: 56px 24px 80px; }
+    .hero { text-align: center; max-width: 680px; margin: 0 auto 56px; }
     .badge {
       display: inline-flex;
       align-items: center;
@@ -100,7 +100,7 @@
       background: var(--surface);
       border: 1px solid var(--border);
       color: var(--muted);
-      margin-bottom: 20px;
+      margin-bottom: 16px;
     }
     .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--green); }
     h1 {
@@ -141,7 +141,7 @@
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
       gap: 16px;
-      margin-bottom: 56px;
+      margin-bottom: 48px;
     }
     .stat-card, .card {
       background: var(--surface);
@@ -154,11 +154,37 @@
     .stat-card { text-align: center; }
     .stat-val { font-size: 26px; font-weight: 700; letter-spacing: -0.02em; }
     .stat-lbl { font-size: 13px; color: var(--muted); margin-top: 4px; }
+    .showcase {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 20px;
+      margin-bottom: 48px;
+    }
+    .shot {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      padding: 12px;
+      box-shadow: var(--shadow);
+      text-align: center;
+    }
+    .shot img {
+      width: 100%;
+      height: auto;
+      border-radius: 12px;
+      display: block;
+    }
+    .shot span {
+      display: block;
+      font-size: 13px;
+      color: var(--muted);
+      margin-top: 10px;
+    }
     .grid {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
       gap: 20px;
-      margin-bottom: 56px;
+      margin-bottom: 48px;
     }
     .card h3 { font-size: 17px; margin-bottom: 8px; }
     .card p { font-size: 14px; color: var(--muted); }
@@ -192,11 +218,7 @@
   <header>
     <div class="nav">
       <a class="brand" href="#">
-        <svg width="24" height="24" viewBox="0 0 64 64" fill="none">
-          <polygon points="32,6 56,19 32,32 8,19" fill="#52c41a"/>
-          <polygon points="8,19 32,32 32,58 8,45" fill="#8c6239"/>
-          <polygon points="56,19 32,32 32,58 56,45" fill="#6b4928"/>
-        </svg>
+        <img src="icon.png" alt="PortableMC-GUI Logo" width="26" height="26" style="border-radius: 6px;" />
         PortableMC-GUI
       </a>
       <div class="nav-actions">
@@ -209,15 +231,15 @@
   <main>
     <section class="hero">
       <div class="badge"><span class="dot"></span> v1.3.3 Available — Native C &amp; Objective-C</div>
-      <div style="margin-bottom: 16px;">
-        <canvas id="grassCube" width="110" height="110" style="cursor: pointer;"></canvas>
+      <div style="margin-bottom: 12px;">
+        <canvas id="grassCube" width="120" height="120" style="cursor: pointer;"></canvas>
       </div>
       <h1>Minecraft, launched at native speed.</h1>
       <p class="subtitle">
         A zero-bloat, cross-platform desktop frontend for <strong>PortableMC</strong> built in pure C and Objective-C. No Electron, no JVM overhead—just instant startup.
       </p>
       <div class="cta-row">
-        <a class="btn-primary" href="https://github.com/claimy17/PortableMC-GUI/releases/latest" target="_blank" rel="noopener">Download Latest Release</a>
+        <a class="btn-primary" href="https://github.com/releases/latest" target="_blank" rel="noopener">Download Latest Release</a>
         <a class="btn-secondary" href="https://github.com" target="_blank" rel="noopener">View Source Code</a>
       </div>
     </section>
@@ -227,6 +249,17 @@
       <div class="stat-card"><div class="stat-val">0 MB</div><div class="stat-lbl">RAM Used In-Game (Auto-Close)</div></div>
       <div class="stat-card"><div class="stat-val">3 OS</div><div class="stat-lbl">Windows, macOS &amp; Linux</div></div>
       <div class="stat-card"><div class="stat-val">1-Click</div><div class="stat-lbl">Boost FPS &amp; Modrinth</div></div>
+    </section>
+
+    <section class="showcase">
+      <div class="shot">
+        <img src="https://github.com" alt="PortableMC-GUI Light Theme Preview" />
+        <span>Native Light Theme &amp; Quick Launch Controls</span>
+      </div>
+      <div class="shot">
+        <img src="https://github.com" alt="PortableMC-GUI Dark Theme Preview" />
+        <span>Native Dark Theme &amp; Integrated Modrinth Catalog</span>
+      </div>
     </section>
 
     <section class="grid">
@@ -249,7 +282,6 @@
       <div class="card">
         <h3>Offline Skins &amp; Capes</h3>
         <p>One-click local skin and cape setup powered by automatic CustomSkinLoader integration.</p>
-      </div>
       <div class="card">
         <h3>Zero Background Overhead</h3>
         <p>Enable Auto-Close mode to terminate the launcher the moment Minecraft starts, freeing 100% of system memory.</p>
@@ -273,7 +305,6 @@
   </main>
 
   <footer>
-  <footer>
     Open-source under MIT License · Created by <a href="https://github.com" target="_blank" rel="noopener">claimy17</a> · Powered by <a href="https://github.com" target="_blank" rel="noopener">PortableMC</a>
   </footer>
 
@@ -291,12 +322,18 @@
     let rotX = -0.45;
     let hovered = false;
 
-    canvas.addEventListener('mouseenter', () => hovered = true);
-    canvas.addEventListener('mouseleave', () => hovered = false);
+    canvas.addEventListener('mouseenter', () => { hovered = true; });
+    canvas.addEventListener('mouseleave', () => { hovered = false; });
 
     const verts = [
-      [-1, -1, -1], [1, -1, -1], [1, 1, -1], [-1, 1, -1],
-      [-1, -1,  1], [1, -1,  1], [1, 1,  1], [-1, 1,  1]
+      [-1, -1, -1],
+      [ 1, -1, -1],
+      [ 1,  1, -1],
+      [-1,  1, -1],
+      [-1, -1,  1],
+      [ 1, -1,  1],
+      [ 1,  1,  1],
+      [-1,  1,  1]
     ];
 
     const faces = [
@@ -309,14 +346,14 @@
     ];
 
     function project(v) {
-      let [x, y, z] = v;
-      let cx = Math.cos(rotY), sx = Math.sin(rotY);
-      let x1 = x * cx + z * sx;
-      let z1 = -x * sx + z * cx;
-      let cy = Math.cos(rotX), sy = Math.sin(rotX);
-      let y2 = y * cy - z1 * sy;
-      let z2 = y * sy + z1 * cy;
-      let scale = 32;
+      const x = v[0], y = v[1], z = v[2];
+      const cx = Math.cos(rotY), sx = Math.sin(rotY);
+      const x1 = x * cx + z * sx;
+      const z1 = -x * sx + z * cx;
+      const cy = Math.cos(rotX), sy = Math.sin(rotX);
+      const y2 = y * cy - z1 * sy;
+      const z2 = y * sy + z1 * cy;
+      const scale = 34;
       return {
         x: canvas.width / 2 + x1 * scale,
         y: canvas.height / 2 + y2 * scale,
@@ -329,25 +366,31 @@
       const proj = verts.map(project);
 
       const sorted = faces.map(f => {
-        const avgZ = f.idx.reduce((sum, i) => sum + proj[i].z, 0) / 4;
-        return { ...f, avgZ };
+        const avgZ = (proj[f.idx[0]].z + proj[f.idx[1]].z + proj[f.idx[2]].z + proj[f.idx[3]].z) / 4;
+        return { idx: f.idx, color: f.color, grassSide: f.grassSide, avgZ: avgZ };
       }).sort((a, b) => a.avgZ - b.avgZ);
 
       for (const f of sorted) {
-        const p = f.idx.map(i => proj[i]);
+        const p0 = proj[f.idx[0]];
+        const p1 = proj[f.idx[1]];
+        const p2 = proj[f.idx[2]];
+        const p3 = proj[f.idx[3]];
+
         ctx.beginPath();
-        ctx.moveTo(p[0].x, p[0].y);
-        for (let i = 1; i < 4; i++) ctx.lineTo(p[i].x, p[i].y);
+        ctx.moveTo(p0.x, p0.y);
+        ctx.lineTo(p1.x, p1.y);
+        ctx.lineTo(p2.x, p2.y);
+        ctx.lineTo(p3.x, p3.y);
         ctx.closePath();
         ctx.fillStyle = f.color;
         ctx.fill();
 
         if (f.grassSide) {
-          const g2 = { x: p[1].x + (p[2].x - p[1].x) * 0.28, y: p[1].y + (p[2].y - p[1].y) * 0.28 };
-          const g3 = { x: p[0].x + (p[3].x - p[0].x) * 0.28, y: p[0].y + (p[3].y - p[0].y) * 0.28 };
+          const g2 = { x: p1.x + (p2.x - p1.x) * 0.28, y: p1.y + (p2.y - p1.y) * 0.28 };
+          const g3 = { x: p0.x + (p3.x - p0.x) * 0.28, y: p0.y + (p3.y - p0.y) * 0.28 };
           ctx.beginPath();
-          ctx.moveTo(p[0].x, p[0].y);
-          ctx.lineTo(p[1].x, p[1].y);
+          ctx.moveTo(p0.x, p0.y);
+          ctx.lineTo(p1.x, p1.y);
           ctx.lineTo(g2.x, g2.y);
           ctx.lineTo(g3.x, g3.y);
           ctx.closePath();
@@ -355,7 +398,7 @@
           ctx.fill();
         }
 
-        ctx.strokeStyle = 'rgba(0,0,0,0.22)';
+        ctx.strokeStyle = 'rgba(0, 0, 0, 0.22)';
         ctx.lineWidth = 1;
         ctx.stroke();
       }
