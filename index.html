@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>PortableMC-GUI — Ultra-Lightweight Native Minecraft Launcher</title>
+  <meta name="description" content="PortableMC-GUI is a fast, native desktop GUI wrapper for PortableMC written in pure C and Objective-C (~300 KB, 0 MB RAM in-game) for Windows, macOS, and Linux." />
+  <meta name="keywords" content="PortableMC, PortableMC-GUI, Minecraft launcher, lightweight launcher, C, Win32, GTK3, Cocoa, Modrinth, Fabric" />
+  <link rel="canonical" href="https://is-a.dev" />
+  <style>
+    :root {
+      --bg: #f5f5f7;
+      --surface: rgba(255, 255, 255, 0.78);
+      --border: rgba(0, 0, 0, 0.08);
+      --text: #1d1d1f;
+      --muted: #6e6e73;
+      --accent: #0071e3;
+      --accent-hover: #0077ed;
+      --green: #34c759;
+      --shadow: 0 12px 32px rgba(0, 0, 0, 0.06);
+    }
+    @media (prefers-color-scheme: dark) {
+      :root:not([data-theme="light"]) {
+        --bg: #0d0d0f;
+        --surface: rgba(28, 28, 30, 0.75);
+        --border: rgba(255, 255, 255, 0.1);
+        --text: #f5f5f7;
+        --muted: #98989d;
+        --accent: #0a84ff;
+        --accent-hover: #409cff;
+        --shadow: 0 12px 32px rgba(0, 0, 0, 0.45);
+      }
+    }
+    :root[data-theme="dark"] {
+      --bg: #0d0d0f;
+      --surface: rgba(28, 28, 30, 0.75);
+      --border: rgba(255, 255, 255, 0.1);
+      --text: #f5f5f7;
+      --muted: #98989d;
+      --accent: #0a84ff;
+      --accent-hover: #409cff;
+      --shadow: 0 12px 32px rgba(0, 0, 0, 0.45);
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.55;
+      transition: background 0.25s, color 0.25s;
+    }
+    header {
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      backdrop-filter: blur(18px);
+      -webkit-backdrop-filter: blur(18px);
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+    }
+    .nav {
+      max-width: 980px;
+      margin: 0 auto;
+      padding: 14px 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-weight: 600;
+      font-size: 16px;
+      text-decoration: none;
+      color: var(--text);
+    }
+    .nav-actions { display: flex; gap: 12px; align-items: center; }
+    .btn-ghost {
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 6px 12px;
+      border-radius: 999px;
+      font-size: 13px;
+      cursor: pointer;
+      text-decoration: none;
+    }
+    .btn-ghost:hover { border-color: var(--accent); }
+    main { max-width: 980px; margin: 0 auto; padding: 64px 24px 80px; }
+    .hero { text-align: center; max-width: 680px; margin: 0 auto 64px; }
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 5px 12px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 500;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      color: var(--muted);
+      margin-bottom: 20px;
+    }
+    .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--green); }
+    h1 {
+      font-size: clamp(34px, 5vw, 52px);
+      font-weight: 700;
+      letter-spacing: -0.025em;
+      line-height: 1.1;
+      margin-bottom: 16px;
+    }
+    .subtitle {
+      font-size: 18px;
+      color: var(--muted);
+      margin-bottom: 32px;
+    }
+    .cta-row { display: flex; flex-wrap: wrap; gap: 12px; justify-content: center; }
+    .btn-primary {
+      background: var(--accent);
+      color: #fff;
+      padding: 12px 24px;
+      border-radius: 12px;
+      font-weight: 600;
+      font-size: 15px;
+      text-decoration: none;
+      transition: background 0.2s, transform 0.15s;
+    }
+    .btn-primary:hover { background: var(--accent-hover); transform: translateY(-1px); }
+    .btn-secondary {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 12px 22px;
+      border-radius: 12px;
+      font-weight: 500;
+      font-size: 15px;
+      text-decoration: none;
+    }
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 16px;
+      margin-bottom: 56px;
+    }
+    .stat-card, .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      padding: 22px;
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(14px);
+    }
+    .stat-card { text-align: center; }
+    .stat-val { font-size: 26px; font-weight: 700; letter-spacing: -0.02em; }
+    .stat-lbl { font-size: 13px; color: var(--muted); margin-top: 4px; }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 20px;
+      margin-bottom: 56px;
+    }
+    .card h3 { font-size: 17px; margin-bottom: 8px; }
+    .card p { font-size: 14px; color: var(--muted); }
+    .os-box {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 28px;
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 16px;
+    }
+    .os-item {
+      padding: 16px;
+      border-radius: 14px;
+      border: 1px solid var(--border);
+    }
+    .os-item strong { display: block; font-size: 15px; margin-bottom: 4px; }
+    .os-item span { font-size: 13px; color: var(--muted); }
+    footer {
+      text-align: center;
+      padding: 28px 24px;
+      font-size: 13px;
+      color: var(--muted);
+      border-top: 1px solid var(--border);
+    }
+    footer a { color: var(--accent); text-decoration: none; }
+    .cube { animation: float 4s ease-in-out infinite; }
+    @keyframes float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-5px); } }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="nav">
+      <a class="brand" href="#">
+        <svg width="24" height="24" viewBox="0 0 64 64" fill="none">
+          <polygon points="32,6 56,19 32,32 8,19" fill="#52c41a"/>
+          <polygon points="8,19 32,32 32,58 8,45" fill="#8c6239"/>
+          <polygon points="56,19 32,32 32,58 56,45" fill="#6b4928"/>
+        </svg>
+        PortableMC-GUI
+      </a>
+      <div class="nav-actions">
+        <button class="btn-ghost" id="themeBtn" type="button">Theme</button>
+        <a class="btn-ghost" href="https://github.com" target="_blank" rel="noopener">GitHub</a>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <section class="hero">
+      <div class="badge"><span class="dot"></span> v1.3.3 Available — Native C &amp; Objective-C</div>
+      <div style="margin-bottom: 16px;">
+        <svg class="cube" width="72" height="72" viewBox="0 0 64 64" fill="none">
+          <polygon points="32,4 58,18 32,32 6,18" fill="#58d63a"/>
+          <polygon points="6,18 32,32 32,60 6,46" fill="#8b5a2b"/>
+          <polygon points="58,18 32,32 32,60 58,46" fill="#65401d"/>
+          <polygon points="6,18 32,32 32,38 6,24" fill="#46b32c"/>
+          <polygon points="58,18 32,32 32,38 58,24" fill="#389422"/>
+        </svg>
+      </div>
+      <h1>Minecraft, launched at native speed.</h1>
+      <p class="subtitle">
+        A zero-bloat, cross-platform desktop frontend for <strong>PortableMC</strong> built in pure C and Objective-C. No Electron, no JVM overhead—just instant startup.
+      </p>
+      <div class="cta-row">
+        <a class="btn-primary" href="https://github.com/releases/latest" target="_blank" rel="noopener">Download Latest Release</a>
+        <a class="btn-secondary" href="https://github.com" target="_blank" rel="noopener">View Source Code</a>
+      </div>
+    </section>
+
+    <section class="stats">
+      <div class="stat-card"><div class="stat-val">~300 KB</div><div class="stat-lbl">Standalone Binary Size</div></div>
+      <div class="stat-card"><div class="stat-val">0 MB</div><div class="stat-lbl">RAM Used In-Game (Auto-Close)</div></div>
+      <div class="stat-card"><div class="stat-val">3 OS</div><div class="stat-lbl">Windows, macOS &amp; Linux</div></div>
+      <div class="stat-card"><div class="stat-val">1-Click</div><div class="stat-lbl">Boost FPS &amp; Modrinth</div></div>
+    </section>
+
+    <section class="grid">
+      <div class="card">
+        <h3>Built-in Modrinth Catalog</h3>
+        <p>Search and install Fabric, Forge, NeoForge, or Quilt mods directly from Modrinth without leaving the launcher.</p>
+      </div>
+      <div class="card">
+        <h3>1-Click "Boost FPS" Pack</h3>
+        <p>Automatically configures Sodium, Lithium, FerriteCore, EntityCulling, and Fabric API for maximum performance.</p>
+      </div>
+      <div class="card">
+        <h3>Dynamic Mojang Manifest</h3>
+        <p>Fetches live releases, snapshots, and beta/alpha versions directly from Mojang with full offline fallback.</p>
+      </div>
+      <div class="card">
+        <h3>Isolated Version Instances</h3>
+        <p>Keep mods, saves, and configs cleanly separated per version inside dedicated <code>instances/&lt;version&gt;/</code> folders.</p>
+      </div>
+      <div class="card">
+        <h3>Offline Skins &amp; Capes</h3>
+        <p>One-click local skin and cape setup powered by automatic CustomSkinLoader integration.</p>
+      </div>
+      <div class="card">
+        <h3>Zero Background Overhead</h3>
+        <p>Enable Auto-Close mode to terminate the launcher the moment Minecraft starts, freeing 100% of system memory.</p>
+      </div>
+    </section>
+
+    <section class="os-box">
+      <div class="os-item">
+        <strong>Windows (Win32 C)</strong>
+        <span>~300 KB standalone portable .exe with native GDI rendering and zero external DLLs.</span>
+      <div class="os-item">
+        <strong>Windows (Win32 C)</strong>
+        <span>~300 KB standalone portable .exe with native GDI rendering and zero external DLLs.</span>
+      </div>
+      <div class="os-item">
+        <strong>macOS 11+ (Cocoa Obj-C)</strong>
+        <span>Native Universal Binary (Apple Silicon &amp; Intel) built directly against AppKit.</span>
+      </div>
+      <div class="os-item">
+        <strong>Linux (GTK3 + Cairo C)</strong>
+        <span>Lightweight native GTK3 interface compiled cleanly with GCC and libcurl.</span>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    Open-source under MIT License · Created by <a href="https://github.com" target="_blank" rel="noopener">claimy17</a> · Powered by <a href="https://github.com" target="_blank" rel="noopener">PortableMC</a>
+  </footer>
+
+  <script>
+    const btn = document.getElementById('themeBtn');
+    btn.addEventListener('click', () => {
+      const cur = document.documentElement.getAttribute('data-theme');
+      const next = cur === 'dark' ? 'light' : 'dark';
+      document.documentElement.setAttribute('data-theme', next);
+    });
+  </script>
+</body>
+</html>
