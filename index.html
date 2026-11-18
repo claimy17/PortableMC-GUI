@@ -325,7 +325,7 @@
         particles.push({
           baseAngle: baseAngle,
           maxOrbit: maxOrbit,
-          spinSpeed: 4.2 + (i % 3) * 0.55,
+          spinSpeed: 5.4 + (i % 3) * 0.65,
           tx: cx + Math.cos(targetAngle) * targetDist,
           ty: cy + Math.sin(targetAngle) * targetDist,
           color: i % 2 === 0 ? '#34d399' : '#22d3ee',
@@ -335,7 +335,7 @@
     }
 
     let startTime = null;
-    const duration = 3000;
+    const duration = 4000;
 
     function drawHexCube(alpha) {
       ctx.save();
@@ -422,8 +422,8 @@
         ctx.restore();
       }
 
-      if (raw > 0.62) {
-        const cubeAlpha = Math.min((raw - 0.62) / 0.35, 1);
+      if (raw > 0.76) {
+        const cubeAlpha = Math.min((raw - 0.76) / 0.22, 1);
         drawHexCube(cubeAlpha);
       }
 
