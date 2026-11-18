@@ -186,8 +186,6 @@
       border-top: 1px solid var(--border);
     }
     footer a { color: var(--accent); text-decoration: none; }
-    .cube { animation: float 4s ease-in-out infinite; }
-    @keyframes float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-5px); } }
   </style>
 </head>
 <body>
@@ -212,13 +210,7 @@
     <section class="hero">
       <div class="badge"><span class="dot"></span> v1.3.3 Available — Native C &amp; Objective-C</div>
       <div style="margin-bottom: 16px;">
-        <svg class="cube" width="72" height="72" viewBox="0 0 64 64" fill="none">
-          <polygon points="32,4 58,18 32,32 6,18" fill="#58d63a"/>
-          <polygon points="6,18 32,32 32,60 6,46" fill="#8b5a2b"/>
-          <polygon points="58,18 32,32 32,60 58,46" fill="#65401d"/>
-          <polygon points="6,18 32,32 32,38 6,24" fill="#46b32c"/>
-          <polygon points="58,18 32,32 32,38 58,24" fill="#389422"/>
-        </svg>
+        <canvas id="grassCube" width="110" height="110" style="cursor: pointer;"></canvas>
       </div>
       <h1>Minecraft, launched at native speed.</h1>
       <p class="subtitle">
@@ -268,9 +260,6 @@
       <div class="os-item">
         <strong>Windows (Win32 C)</strong>
         <span>~300 KB standalone portable .exe with native GDI rendering and zero external DLLs.</span>
-      <div class="os-item">
-        <strong>Windows (Win32 C)</strong>
-        <span>~300 KB standalone portable .exe with native GDI rendering and zero external DLLs.</span>
       </div>
       <div class="os-item">
         <strong>macOS 11+ (Cocoa Obj-C)</strong>
@@ -284,6 +273,7 @@
   </main>
 
   <footer>
+  <footer>
     Open-source under MIT License · Created by <a href="https://github.com" target="_blank" rel="noopener">claimy17</a> · Powered by <a href="https://github.com" target="_blank" rel="noopener">PortableMC</a>
   </footer>
 
@@ -294,6 +284,86 @@
       const next = cur === 'dark' ? 'light' : 'dark';
       document.documentElement.setAttribute('data-theme', next);
     });
+
+    const canvas = document.getElementById('grassCube');
+    const ctx = canvas.getContext('2d');
+    let rotY = 0.65;
+    let rotX = -0.45;
+    let hovered = false;
+
+    canvas.addEventListener('mouseenter', () => hovered = true);
+    canvas.addEventListener('mouseleave', () => hovered = false);
+
+    const verts = [
+      [-1, -1, -1], [1, -1, -1], [1, 1, -1], [-1, 1, -1],
+      [-1, -1,  1], [1, -1,  1], [1, 1,  1], [-1, 1,  1]
+    ];
+
+    const faces = [
+      { idx:, color: '#785032', grassSide: true },
+      { idx:, color: '#785032', grassSide: true },
+      { idx:, color: '#644128', grassSide: true },
+      { idx:, color: '#644128', grassSide: true },
+      { idx:, color: '#46a032', grassSide: false },
+      { idx:, color: '#50321e', grassSide: false }
+    ];
+
+    function project(v) {
+      let [x, y, z] = v;
+      let cx = Math.cos(rotY), sx = Math.sin(rotY);
+      let x1 = x * cx + z * sx;
+      let z1 = -x * sx + z * cx;
+      let cy = Math.cos(rotX), sy = Math.sin(rotX);
+      let y2 = y * cy - z1 * sy;
+      let z2 = y * sy + z1 * cy;
+      let scale = 32;
+      return {
+        x: canvas.width / 2 + x1 * scale,
+        y: canvas.height / 2 + y2 * scale,
+        z: z2
+      };
+    }
+
+    function drawCube() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      const proj = verts.map(project);
+
+      const sorted = faces.map(f => {
+        const avgZ = f.idx.reduce((sum, i) => sum + proj[i].z, 0) / 4;
+        return { ...f, avgZ };
+      }).sort((a, b) => a.avgZ - b.avgZ);
+
+      for (const f of sorted) {
+        const p = f.idx.map(i => proj[i]);
+        ctx.beginPath();
+        ctx.moveTo(p[0].x, p[0].y);
+        for (let i = 1; i < 4; i++) ctx.lineTo(p[i].x, p[i].y);
+        ctx.closePath();
+        ctx.fillStyle = f.color;
+        ctx.fill();
+
+        if (f.grassSide) {
+          const g2 = { x: p[1].x + (p[2].x - p[1].x) * 0.28, y: p[1].y + (p[2].y - p[1].y) * 0.28 };
+          const g3 = { x: p[0].x + (p[3].x - p[0].x) * 0.28, y: p[0].y + (p[3].y - p[0].y) * 0.28 };
+          ctx.beginPath();
+          ctx.moveTo(p[0].x, p[0].y);
+          ctx.lineTo(p[1].x, p[1].y);
+          ctx.lineTo(g2.x, g2.y);
+          ctx.lineTo(g3.x, g3.y);
+          ctx.closePath();
+          ctx.fillStyle = '#46a032';
+          ctx.fill();
+        }
+
+        ctx.strokeStyle = 'rgba(0,0,0,0.22)';
+        ctx.lineWidth = 1;
+        ctx.stroke();
+      }
+
+      rotY += hovered ? 0.045 : 0.015;
+      requestAnimationFrame(drawCube);
+    }
+    drawCube();
   </script>
 </body>
 </html>
