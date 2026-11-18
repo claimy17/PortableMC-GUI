@@ -337,16 +337,17 @@
     let startTime = null;
     const duration = 4000;
 
-    function drawHexCube(alpha) {
+    function drawHexCube(alpha, scale) {
       ctx.save();
       ctx.globalAlpha = alpha;
+      const curR = 10 + (r - 10) * scale;
 
-      const top = { x: cx, y: cy - r };
-      const topRight = { x: cx + r * 0.866, y: cy - r * 0.5 };
-      const botRight = { x: cx + r * 0.866, y: cy + r * 0.5 };
-      const bottom = { x: cx, y: cy + r };
-      const botLeft = { x: cx - r * 0.866, y: cy + r * 0.5 };
-      const topLeft = { x: cx - r * 0.866, y: cy - r * 0.5 };
+      const top = { x: cx, y: cy - curR };
+      const topRight = { x: cx + curR * 0.866, y: cy - curR * 0.5 };
+      const botRight = { x: cx + curR * 0.866, y: cy + curR * 0.5 };
+      const bottom = { x: cx, y: cy + curR };
+      const botLeft = { x: cx - curR * 0.866, y: cy + curR * 0.5 };
+      const topLeft = { x: cx - curR * 0.866, y: cy - curR * 0.5 };
       const center = { x: cx, y: cy };
 
       const gradTop = ctx.createLinearGradient(topLeft.x, top.y, topRight.x, center.y);
@@ -423,8 +424,10 @@
       }
 
       if (raw > 0.46) {
-        const cubeAlpha = Math.min((raw - 0.46) / 0.30, 1);
-        drawHexCube(cubeAlpha);
+        const progress = Math.min((raw - 0.46) / 0.36, 1);
+        const smoothScale = 1 - Math.pow(1 - progress, 3);
+        const cubeAlpha = Math.min((raw - 0.46) / 0.22, 1);
+        drawHexCube(cubeAlpha, smoothScale);
       }
 
       if (raw < 1) {
