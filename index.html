@@ -308,85 +308,133 @@
 
     const canvas = document.getElementById('grassCube');
     const ctx = canvas.getContext('2d');
-    let rotY = 0.65;
-    let rotX = -0.45;
-    let hovered = false;
+    const cx = canvas.width / 2;
+    const cy = canvas.height / 2;
+    const r = 42;
 
-    canvas.addEventListener('mouseenter', () => { hovered = true; });
-    canvas.addEventListener('mouseleave', () => { hovered = false; });
+    const particles = [];
+    const count = 28;
 
-    const vx = new Float32Array([-1,  1,  1, -1, -1,  1,  1, -1]);
-    const vy = new Float32Array([-1, -1,  1,  1, -1, -1,  1,  1]);
-    const vz = new Float32Array([-1, -1, -1, -1,  1,  1,  1,  1]);
-
-    const faces = [
-      { a: 4, b: 5, c: 6, d: 7, color: '#785032', grass: true },
-      { a: 1, b: 0, c: 3, d: 2, color: '#785032', grass: true },
-      { a: 5, b: 1, c: 2, d: 6, color: '#644128', grass: true },
-      { a: 0, b: 4, c: 7, d: 3, color: '#644128', grass: true },
-      { a: 0, b: 1, c: 5, d: 4, color: '#46a032', grass: false },
-      { a: 7, b: 6, c: 2, d: 3, color: '#50321e', grass: false }
-    ];
-
-    function drawCube() {
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-      const px = new Float32Array(8);
-      const py = new Float32Array(8);
-      const pz = new Float32Array(8);
-
-      const cy = Math.cos(rotY), sy = Math.sin(rotY);
-      const cx = Math.cos(rotX), sx = Math.sin(rotX);
-
-      for (let i = 0; i < 8; i++) {
-        const x1 = vx[i] * cy + vz[i] * sy;
-        const z1 = -vx[i] * sy + vz[i] * cy;
-        const y2 = vy[i] * cx - z1 * sx;
-        const z2 = vy[i] * sx + z1 * cx;
-        px[i] = 60 + x1 * 34;
-        py[i] = 60 + y2 * 34;
-        pz[i] = z2;
+    function initParticles() {
+      particles.length = 0;
+      for (let i = 0; i < count; i++) {
+        const angle = (i / count) * Math.PI * 2 + Math.random() * 0.4;
+        const dist = 36 + Math.random() * 22;
+        const targetAngle = (i / count) * Math.PI * 2;
+        const targetDist = Math.random() * (r * 0.72);
+        particles.push({
+          sx: cx + Math.cos(angle) * dist,
+          sy: cy + Math.sin(angle) * dist,
+          tx: cx + Math.cos(targetAngle) * targetDist,
+          ty: cy + Math.sin(targetAngle) * targetDist,
+          color: i % 2 === 0 ? '#34d399' : '#22d3ee',
+          size: 2.3 + Math.random() * 1.4
+        });
       }
+    }
 
-      const list = faces.map(f => ({
-        f: f,
-        z: (pz[f.a] + pz[f.b] + pz[f.c] + pz[f.d]) * 0.25
-      })).sort((u, v) => u.z - v.z);
+    let startTime = null;
+    const duration = 1500;
 
-      for (let k = 0; k < list.length; k++) {
-        const f = list[k].f;
-        ctx.beginPath();
-        ctx.moveTo(px[f.a], py[f.a]);
-        ctx.lineTo(px[f.b], py[f.b]);
-        ctx.lineTo(px[f.c], py[f.c]);
-        ctx.lineTo(px[f.d], py[f.d]);
-        ctx.closePath();
-        ctx.fillStyle = f.color;
-        ctx.fill();
+    function easeOutCubic(t) {
+      return 1 - Math.pow(1 - t, 3);
+    }
 
-        if (f.grass) {
-          const gx2 = px[f.b] + (px[f.c] - px[f.b]) * 0.28;
-          const gy2 = py[f.b] + (py[f.c] - py[f.b]) * 0.28;
-          const gx3 = px[f.a] + (px[f.d] - px[f.a]) * 0.28;
-          const gy3 = py[f.a] + (py[f.d] - py[f.a]) * 0.28;
+    function drawHexCube(alpha) {
+      ctx.save();
+      ctx.globalAlpha = alpha;
+
+      const top = { x: cx, y: cy - r };
+      const topRight = { x: cx + r * 0.866, y: cy - r * 0.5 };
+      const botRight = { x: cx + r * 0.866, y: cy + r * 0.5 };
+      const bottom = { x: cx, y: cy + r };
+      const botLeft = { x: cx - r * 0.866, y: cy + r * 0.5 };
+      const topLeft = { x: cx - r * 0.866, y: cy - r * 0.5 };
+      const center = { x: cx, y: cy };
+
+      const gradTop = ctx.createLinearGradient(topLeft.x, top.y, topRight.x, center.y);
+      gradTop.addColorStop(0, '#5ef08a');
+      gradTop.addColorStop(1, '#36d6a8');
+      ctx.beginPath();
+      ctx.moveTo(top.x, top.y);
+      ctx.lineTo(topRight.x, topRight.y);
+      ctx.lineTo(center.x, center.y);
+      ctx.lineTo(topLeft.x, topLeft.y);
+      ctx.closePath();
+      ctx.fillStyle = gradTop;
+      ctx.fill();
+
+      const gradLeft = ctx.createLinearGradient(topLeft.x, topLeft.y, center.x, bottom.y);
+      gradLeft.addColorStop(0, '#38bdf8');
+      gradLeft.addColorStop(1, '#2563eb');
+      ctx.beginPath();
+      ctx.moveTo(topLeft.x, topLeft.y);
+      ctx.lineTo(center.x, center.y);
+      ctx.lineTo(bottom.x, bottom.y);
+      ctx.lineTo(botLeft.x, botLeft.y);
+      ctx.closePath();
+      ctx.fillStyle = gradLeft;
+      ctx.fill();
+
+      const gradRight = ctx.createLinearGradient(center.x, center.y, botRight.x, bottom.y);
+      gradRight.addColorStop(0, '#2dd4bf');
+      gradRight.addColorStop(1, '#0284c7');
+      ctx.beginPath();
+      ctx.moveTo(center.x, center.y);
+      ctx.lineTo(topRight.x, topRight.y);
+      ctx.lineTo(botRight.x, botRight.y);
+      ctx.lineTo(bottom.x, bottom.y);
+      ctx.closePath();
+      ctx.fillStyle = gradRight;
+      ctx.fill();
+
+      ctx.restore();
+    }
+
+    function animate(ts) {
+      if (!startTime) startTime = ts;
+      const elapsed = ts - startTime;
+      const raw = Math.min(elapsed / duration, 1);
+      const t = easeOutCubic(raw);
+
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      if (raw < 0.85) {
+        const pAlpha = raw > 0.6 ? 1 - (raw - 0.6) / 0.25 : 1;
+        ctx.save();
+        ctx.globalAlpha = Math.max(0, pAlpha);
+        for (let i = 0; i < particles.length; i++) {
+          const p = particles[i];
+          const x = p.sx + (p.tx - p.sx) * t;
+          const y = p.sy + (p.ty - p.sy) * t;
           ctx.beginPath();
-          ctx.moveTo(px[f.a], py[f.a]);
-          ctx.lineTo(px[f.b], py[f.b]);
-          ctx.lineTo(gx2, gy2);
-          ctx.lineTo(gx3, gy3);
-          ctx.closePath();
-          ctx.fillStyle = '#46a032';
+          ctx.arc(x, y, p.size, 0, Math.PI * 2);
+          ctx.fillStyle = p.color;
           ctx.fill();
         }
-
-        ctx.strokeStyle = 'rgba(0, 0, 0, 0.22)';
-        ctx.lineWidth = 1;
-        ctx.stroke();
+        ctx.restore();
       }
 
-      rotY += hovered ? 0.045 : 0.015;
-      requestAnimationFrame(drawCube);
+      if (raw > 0.5) {
+        const cubeAlpha = Math.min((raw - 0.5) / 0.45, 1);
+        drawHexCube(cubeAlpha);
+      }
+
+      if (raw < 1) {
+        requestAnimationFrame(animate);
+      }
     }
-    drawCube();
+
+    canvas.title = 'Click to replay animation';
+    canvas.addEventListener('click', () => {
+      startTime = null;
+      initParticles();
+      requestAnimationFrame(animate);
+    });
+
+    initParticles();
+    requestAnimationFrame(animate);
   </script>
 </body>
 </html>
+
