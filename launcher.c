@@ -1393,6 +1393,7 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) 
               WS_VISIBLE | WS_CHILD | WS_VSCROLL | ES_MULTILINE | ES_AUTOVSCROLL | ES_READONLY,
               25, 258, 465, 118, hwnd, (HMENU)ID_EDIT_LOG, NULL, NULL);
           SendMessage(hEditLog, WM_SETFONT, (WPARAM)hFontLog, TRUE);
+          SendMessageA(hEditLog, EM_SETLIMITTEXT, 0, 0);
 
           hBtnLaunch = CreateWindowA("BUTTON", "LAUNCH MINECRAFT",
               WS_VISIBLE | WS_CHILD | BS_OWNERDRAW, 25, 388, 465, 44, hwnd, (HMENU)ID_BTN_LAUNCH, NULL, NULL);
@@ -1648,16 +1649,20 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) 
             return (LRESULT)hBrushInput;
         }
 
-        case WM_APPEND_LOG: {
-            char* text = (char*)lParam;
-            if (text) {
-                int len = GetWindowTextLengthA(hEditLog);
-                SendMessageA(hEditLog, EM_SETSEL, (WPARAM)len, (LPARAM)len);
-                SendMessageA(hEditLog, EM_REPLACESEL, FALSE, (LPARAM)text);
-                free(text);
-            }
-            break;
-        }
+	case WM_APPEND_LOG: {
+	    char* text = (char*)lParam;
+	    if (text) {
+	        int len = GetWindowTextLengthA(hEditLog);
+	        if (len > 25000) {
+	            SetWindowTextA(hEditLog, "");
+	            len = 0;
+	        }
+	        SendMessageA(hEditLog, EM_SETSEL, (WPARAM)len, (LPARAM)len);
+	        SendMessageA(hEditLog, EM_REPLACESEL, FALSE, (LPARAM)text);
+	        free(text);
+	    }
+	    break;
+	}
 
         case WM_CMD_FINISHED: {
             isRunningCmd = FALSE;

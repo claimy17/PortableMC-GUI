@@ -420,7 +420,7 @@ static void mkdir_p_mac(const char *path) {
     [self.chkInstance setFrame:NSMakeRect(294, 238, 78, 22)];
     [content addSubview:self.chkInstance];
 
-    self.chkAutoClose = [NSButton checkboxWithTitle:@"Auto-Close (0 MB)" target:nil action:nil];
+    self.chkAutoClose = [NSButton checkboxWithTitle:@"Auto-Close" target:nil action:nil];
     [self.chkAutoClose setFrame:NSMakeRect(374, 238, 146, 22)];
     [self.chkAutoClose setState:NSControlStateValueOn];
     [content addSubview:self.chkAutoClose];
@@ -492,6 +492,9 @@ static void mkdir_p_mac(const char *path) {
 
 - (void)appendLog:(NSString *)text {
     dispatch_async(dispatch_get_main_queue(), ^{
+        if ([[self.textLog string] length] > 25000) {
+            [self.textLog setString:@""];
+        }
         NSAttributedString *attr = [[NSAttributedString alloc] initWithString:text
                                                                    attributes:@{ NSForegroundColorAttributeName: [NSColor labelColor],
                                                                                  NSFontAttributeName: [NSFont fontWithName:@"Menlo" size:11.5] }];

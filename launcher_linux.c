@@ -240,6 +240,9 @@ static gboolean on_draw_status_dot(GtkWidget *widget, cairo_t *cr, gpointer data
 
 static void append_log(AppData *app, const char *text) {
     GtkTextBuffer *buf = gtk_text_view_get_buffer(GTK_TEXT_VIEW(app->text_log));
+    if (gtk_text_buffer_get_char_count(buf) > 25000) {
+        gtk_text_buffer_set_text(buf, "", 0);
+    }
     GtkTextIter end;
     gtk_text_buffer_get_end_iter(buf, &end);
     gtk_text_buffer_insert(buf, &end, text, -1);
@@ -1088,7 +1091,7 @@ int main(int argc, char *argv[]) {
     app.chk_instance = gtk_check_button_new_with_label("Isolated");
     gtk_box_pack_start(GTK_BOX(hbox_tools), app.chk_instance, FALSE, FALSE, 0);
 
-    app.chk_autoclose = gtk_check_button_new_with_label("Auto-Close (0 MB)");
+    app.chk_autoclose = gtk_check_button_new_with_label("Auto-Close");
     gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(app.chk_autoclose), TRUE);
     gtk_box_pack_start(GTK_BOX(hbox_tools), app.chk_autoclose, FALSE, FALSE, 0);
 
